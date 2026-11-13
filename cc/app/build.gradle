@@ -1,0 +1,73 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing material is supplied only by GitHub Actions Secrets.
+def releaseStorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+def releaseStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+def hasReleaseSigning = [releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword].every { it != null && !it.isEmpty() }
+
+// VERSION.txt is the single source of truth. Android still requires versionCode,
+// so derive it automatically from major.minor.patch (no separate manual counter).
+def versionLine = rootProject.file('VERSION.txt').readLines().find { it.startsWith('Version:') }
+if (versionLine == null) throw new GradleException('Version is missing from VERSION.txt')
+def appVersionName = versionLine.substring('Version:'.length()).trim()
+def versionParts = appVersionName.tokenize('.')
+if (versionParts.size() != 3 || !versionParts.every { it ==~ /\d+/ } || versionParts[1].toInteger() > 999 || versionParts[2].toInteger() > 999) {
+    throw new GradleException('Version must use major.minor.patch format, e.g. 1.0.16')
+}
+def appVersionCode = versionParts[0].toInteger() * 1000000 + versionParts[1].toInteger() * 1000 + versionParts[2].toInteger()
+if (appVersionCode <= 0 || appVersionCode > 2100000000) throw new GradleException('Derived Android versionCode is out of range')
+
+android {
+    namespace 'ru.saradmin.currency'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ru.saradmin.currency'
+        minSdk 23
+        targetSdk 35
+        versionCode appVersionCode
+        versionName appVersionName
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Debug builds retain the standard Android debug key.
+        }
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    testOptions { unitTests.returnDefaultValues = true }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}
