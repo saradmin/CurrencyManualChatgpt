@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.21
+- Settings now list the current base currency first, followed by the other currencies in exactly the same order as the main screen.
+- Expanded the one-command release script's live progress display to show workflow jobs and individual build/test/signing steps, updating only when their state changes.
+
 ## 1.0.19
 - Corrected the release archive and version progression; this release supersedes the incorrectly packaged 1.0.18 source archive.
 - Kept the launcher icon as two diagonal C initials: blue upper-left and red lower-right.
@@ -41,6 +45,10 @@
 - Amount keypad and rate editor accept grouped values without breaking numeric parsing.
 
 # Changelog
+
+## 1.0.21
+- Settings now list the current base currency first, followed by the other currencies in exactly the same order as the main screen.
+- Expanded the one-command release script's live progress display to show workflow jobs and individual build/test/signing steps, updating only when their state changes.
 
 ## 1.0.10
 - Made Settings Save/Cancel transactional and reliable.

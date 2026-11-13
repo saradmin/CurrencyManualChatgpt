@@ -6,6 +6,14 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public class CurrencyOrderTest {
+    @Test public void putsBaseFirstAndPreservesMainScreenOrder() {
+        assertEquals(Arrays.asList("USD", "RUB", "EGP", "KZT"),
+                CurrencyOrder.baseFirst(Arrays.asList("RUB", "EGP", "USD", "KZT"), "USD"));
+    }
+    @Test public void baseAlreadyFirstKeepsRemainingOrder() {
+        assertEquals(Arrays.asList("EGP", "RUB", "KZT"),
+                CurrencyOrder.baseFirst(Arrays.asList("EGP", "RUB", "KZT"), "EGP"));
+    }
     @Test public void movesCurrencyDownAndPreservesOtherItems() {
         List<String> result = CurrencyOrder.move(Arrays.asList("EUR", "KZT", "RUB", "EGP"), 0, 2);
         assertEquals(Arrays.asList("KZT", "RUB", "EUR", "EGP"), result);

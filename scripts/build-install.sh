@@ -77,12 +77,18 @@ while [ -z "$RUN_ID" ]; do
 done
 printf '\nFound workflow run: %s\n' "$RUN_ID"
 
-printf '\n[4/4] Waiting for build, tests and signing verification...\n'
+printf '\n[4/4] Live GitHub Actions progress (run %s)\n' "$RUN_ID"
+LAST_PROGRESS=""
 while true; do
   STATE="$(retry_gh run view "$RUN_ID" --repo "$REPO" --json status,conclusion --jq '[.status, (.conclusion // "")] | @tsv')" || fail "Could not read workflow status after repeated retries. Run $RUN_ID is still on GitHub; rerun this script to resume."
   IFS=$'\t' read -r STATUS CONCLUSION <<< "$STATE"
+  PROGRESS="$(retry_gh run view "$RUN_ID" --repo "$REPO" --json jobs --jq '.jobs[]? as $job | $job.steps[]? | (($job.name) + " / " + .name + ": " + (if .status == "completed" then (if .conclusion == "success" then "✓ success" elif .conclusion == "skipped" then "- skipped" else "✗ " + (.conclusion // "failed") end) else (.status // "queued") end))')" || fail "Could not read workflow job progress after repeated retries. Run $RUN_ID is still on GitHub; rerun this script to resume."
+  if [ "$PROGRESS" != "$LAST_PROGRESS" ] && [ -n "$PROGRESS" ]; then
+    printf '\n%s\n' "$PROGRESS"
+    LAST_PROGRESS="$PROGRESS"
+  fi
   if [ "$STATUS" = "completed" ]; then break; fi
-  printf 'Workflow status: %s. Next check in %ss.\n' "${STATUS:-unknown}" "$POLL_SECONDS"
+  printf '\nOverall workflow: %s. Refreshing in %ss...\n' "${STATUS:-unknown}" "$POLL_SECONDS"
   sleep "$POLL_SECONDS"
 done
 
