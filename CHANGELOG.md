@@ -114,3 +114,9 @@
 - Keep changes isolated to the edited pair, leaving all other currency-pair rates unchanged.
 - Track the Keep this rate setting per pair and clear an unpinned manual pair override when an API refresh supplies a fresh rate for either currency.
 - Add unit tests for reciprocal pair conversion and 1:1 rates in both directions.
+
+
+## 1.0.23
+- Remove accidentally committed source ZIP archives and the stray nested `cc/` extraction directory before each release commit.
+- Add `.gitignore` rules preventing source archives, APKs, build outputs and local signing files from entering Git.
+- Shorten live GitHub Actions progress refresh interval from 8 to 5 seconds.

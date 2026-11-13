@@ -9,7 +9,7 @@ BRANCH="main"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION_FILE="$PROJECT_ROOT/VERSION.txt"
 DOWNLOAD_ROOT="$HOME/storage/shared/Download/CurrencyConverter"
-POLL_SECONDS=8
+POLL_SECONDS=5
 MAX_API_RETRIES=20
 
 fail() { printf '\nERROR: %s\n' "$1" >&2; exit 1; }
@@ -28,10 +28,15 @@ VERSION="$(sed -n 's/^Version: *//p' "$VERSION_FILE" | head -n 1)"
 ARTIFACT="CurrencyConverter-v${VERSION}-release-apk"
 
 printf 'Currency Converter %s\n' "$VERSION"
-printf '\n[1/4] Preparing Git commit...\n'
-# Do not commit the source archive copied here for extraction.
+printf '\n[1/4] Cleaning repository and preparing Git commit...\n'
+# Remove source ZIPs copied into the project folder for extraction. They are
+# delivery artifacts, not source code, and must never enter Git history.
+find "$PROJECT_ROOT" -maxdepth 1 -type f \
+  \( -name 'CurrencyConverter-*.zip' -o -name 'CurrencyManual-*.zip' \) -delete
+# Remove the accidental nested extraction directory seen in the repository.
+[ ! -d "$PROJECT_ROOT/cc" ] || rm -rf "$PROJECT_ROOT/cc"
+# Stage all source changes, including deletions of previously committed ZIPs.
 git add -A
-git reset -q -- 'CurrencyConverter-v*-source-for-git.zip' 2>/dev/null || true
 if ! git diff --cached --quiet; then
   git commit -m "Currency Converter ${VERSION}"
 else

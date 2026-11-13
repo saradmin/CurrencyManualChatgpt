@@ -1,2 +1,0 @@
-App name: Currency Converter
-Version: 1.0.18
