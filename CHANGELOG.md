@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.24
+- Removed periodic rate-update intervals. Rates now refresh automatically once when the app is opened, and can also be refreshed manually with Update rates now.
+- Update rates now fetches the complete provider rate set and updates every unpinned currency pair; pinned pair overrides remain unchanged.
+- Fixed API source badges so USD/EGP shows the same provider in both directions. The source belongs to the underlying currency pair, not whichever currency happens to be the target.
+- Pinning a rate now snapshots the currently displayed quote and its source as a pair-specific override, so the quote truly remains fixed across refreshes and base-currency changes.
+- Added unit tests for source consistency in both directions and manual pair overrides.
+
 ## 1.0.21
 - Settings now list the current base currency first, followed by the other currencies in exactly the same order as the main screen.
 - Expanded the one-command release script's live progress display to show workflow jobs and individual build/test/signing steps, updating only when their state changes.

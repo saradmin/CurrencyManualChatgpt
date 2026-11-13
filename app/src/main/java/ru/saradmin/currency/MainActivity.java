@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
     private TextView statusHint;
     private boolean settingsEditActive = false;
     private boolean rateRefreshInProgress = false;
+    private boolean initialRefreshStarted = false;
     private boolean settingsTemporarilyHidden = false;
     private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
     private final java.util.LinkedHashMap<String, String> settingsOriginalRates = new java.util.LinkedHashMap<>();
@@ -79,7 +80,7 @@ public class MainActivity extends Activity {
         buildMainScreen();
     }
 
-    @Override protected void onResume() { super.onResume(); refreshRatesIfNeeded(false); }
+    @Override protected void onResume() { super.onResume(); if (!initialRefreshStarted) { initialRefreshStarted = true; refreshRatesIfNeeded(); } }
 
     private int dp(float value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
     private GradientDrawable rounded(int color, int stroke) {
@@ -379,9 +380,9 @@ public class MainActivity extends Activity {
         LinearLayout fallbackRow = row(); LinearLayout.LayoutParams frp = new LinearLayout.LayoutParams(-1, -2); frp.topMargin = dp(4); sourceBlock.addView(fallbackRow, frp);
         addLegendSource(fallbackRow, 0, "Manual / fallback");
 
-        Button interval = smallButton("Update interval: " + intervalLabel(repository.getIntervalMinutes()), true);
-        LinearLayout.LayoutParams intp = new LinearLayout.LayoutParams(-1, dp(42)); intp.topMargin = dp(10); body.addView(interval, intp);
-        interval.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Update interval").setItems(new String[]{"15 minutes","30 minutes","1 hour","6 hours","12 hours","24 hours"},(d,w)->{long[] vals={15,30,60,360,720,1440};repository.setIntervalMinutes(vals[w]);interval.setText("Update interval: "+intervalLabel(vals[w]));}).show());
+        TextView autoUpdateNote = label("Rates refresh automatically when the app opens.", 12, false);
+        autoUpdateNote.setTextColor(MUTED);
+        LinearLayout.LayoutParams autoNoteP = new LinearLayout.LayoutParams(-1, -2); autoNoteP.topMargin = dp(10); body.addView(autoUpdateNote, autoNoteP);
         Button updateNow = smallButton("Update rates now", true); LinearLayout.LayoutParams unp = new LinearLayout.LayoutParams(-1, dp(42)); unp.topMargin = dp(6); body.addView(updateNow, unp);
         updateNow.setOnClickListener(v -> {
             if (rateRefreshInProgress) return;
@@ -600,9 +601,7 @@ public class MainActivity extends Activity {
                 }).show();
     }
 
-    private String intervalLabel(long m) { return m<60?m+" min":(m%60==0?m/60+" h":m+" min"); }
-    private void refreshRatesIfNeeded(boolean force) {
-        if (!force && !repository.shouldRefresh()) { updateStatus(false); return; }
+    private void refreshRatesIfNeeded() {
         if (statusHint != null) statusHint.setText("Updating rates…");
         network.execute(() -> { RateProvider.Result result=new RateProvider().fetch(); runOnUiThread(() -> {
             if (result.anyApiSucceeded && !result.rates.isEmpty()) { repository.applyApiRates(result.rates); updateStatus(true); refreshResults(); }
@@ -612,8 +611,7 @@ public class MainActivity extends Activity {
     private void updateStatus(boolean success) {
         if(statusHint==null)return;
         if(success) statusHint.setText("Rates updated · "+new java.text.SimpleDateFormat("MMM d, HH:mm",Locale.US).format(new java.util.Date(repository.getLastUpdate())));
-        else if(repository.getLastUpdate()>0 && !repository.shouldRefresh()) statusHint.setText("Saved rates · last updated " + new java.text.SimpleDateFormat("MMM d, HH:mm",Locale.US).format(new java.util.Date(repository.getLastUpdate())));
-        else if(repository.getLastUpdate()>0) statusHint.setText("APIs unavailable · using the last saved rates");
+        else if(repository.getLastUpdate()>0) statusHint.setText("Saved rates · last updated " + new java.text.SimpleDateFormat("MMM d, HH:mm",Locale.US).format(new java.util.Date(repository.getLastUpdate())) + " · API unavailable");
         else statusHint.setText("No API data · check your connection or enter rates manually");
     }
 
