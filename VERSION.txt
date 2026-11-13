@@ -1,4 +1,6 @@
-CurrencyManual
-Version: 1.0.1
-Version code: 2
-Archive: CurrencyManual-v1.0.1-source-for-git.zip
+App name: Currency Converter
+Version: 1.0.3
+Version code: 4
+Package: ru.saradmin.currency
+Release artifact: CurrencyConverter-v1.0.3-release-apk
+Signing: persistent private keystore supplied through GitHub Actions Secrets
