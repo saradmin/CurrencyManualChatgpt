@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Persistent currency factors normalized to USD internally; USD is never imposed as the UI base. */
+/** Persistent independent quotes for each currency pair. */
 public final class CurrencyRepository {
     private static final String PREFS="currency_manual_v3"; private static final int MAX_CURRENCIES=6;
     private final SharedPreferences prefs; private final LinkedHashMap<String,BigDecimal> factors=new LinkedHashMap<>(); private final LinkedHashMap<String,Integer> sources=new LinkedHashMap<>(); private final LinkedHashMap<String,BigDecimal> apiCache=new LinkedHashMap<>(); private final LinkedHashMap<String,Integer> apiSources=new LinkedHashMap<>(); private final LinkedHashMap<String,Boolean> pinned=new LinkedHashMap<>(); private final LinkedHashMap<String,BigDecimal> pairRates=new LinkedHashMap<>(); private final LinkedHashMap<String,Integer> pairSources=new LinkedHashMap<>(); private final LinkedHashMap<String,Boolean> pairPinned=new LinkedHashMap<>();
@@ -105,6 +105,7 @@ public final class CurrencyRepository {
     }
     public synchronized void save(){if(editSnapshot != null) return; try{JSONArray a=new JSONArray();for(Map.Entry<String,BigDecimal> e:factors.entrySet()){JSONObject o=new JSONObject();o.put("code",e.getKey());o.put("factor",e.getValue().toPlainString());o.put("source",sources.containsKey(e.getKey())?sources.get(e.getKey()):0);o.put("pinned",pinned.containsKey(e.getKey())&&pinned.get(e.getKey()));a.put(o);}JSONObject cache=new JSONObject(); for(Map.Entry<String,BigDecimal> e:apiCache.entrySet()){JSONObject v=new JSONObject();v.put("factor",e.getValue().toPlainString());v.put("source",apiSources.get(e.getKey()));cache.put(e.getKey(),v);}
             JSONArray pairs = serializePairs(pairRates, pairSources, pairPinned); prefs.edit().putString("currencies",a.toString()).putString("base",baseCode).putLong("lastUpdate",lastUpdate).putString("apiCache",cache.toString()).putString("pairRates",pairs.toString()).apply();}catch(Exception ignored){}}
+    public synchronized List<String> getCurrencyCodes(){ return new ArrayList<>(factors.keySet()); }
     public synchronized List<CurrencyItem> getCurrencies(){List<CurrencyItem> r=new ArrayList<>();for(String c:CurrencyOrder.baseFirst(new ArrayList<>(factors.keySet()),baseCode))r.add(CurrencyCatalog.find(c));return r;}
     public synchronized String getBaseCode(){return baseCode;} public synchronized void setBaseCode(String c){if(!factors.containsKey(c))throw new IllegalArgumentException();baseCode=c;save();}
     public synchronized BigDecimal getFactor(String c){return factors.get(c);} public synchronized BigDecimal getRate(String c){String key=matchingPairKey(baseCode,c); if(key!=null){BigDecimal v=pairRates.get(key);return ru.saradmin.currency.core.PairRate.orient(v,key.equals(pairKey(baseCode,c)));} return ru.saradmin.currency.core.ConversionEngine.rate(factors.get(baseCode),factors.get(c));}
@@ -159,43 +160,45 @@ public final class CurrencyRepository {
 
     public synchronized void applyApiRates(Map<String,RateProvider.Rate> rates) {
         long updatedAt = System.currentTimeMillis();
+        // Pair-keyed API quotes are authoritative. Never overwrite a pinned pair.
         for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
-            apiCache.put(e.getKey(), e.getValue().value);
-            apiSources.put(e.getKey(), e.getValue().source);
-        }
-        for (String c : factors.keySet()) {
-            RateProvider.Rate r = rates.get(c);
-            if (r != null) {
-                // API values are the shared fallback factors. Pair-specific pinned
-                // overrides are stored separately and remain untouched below.
-                // A legacy per-currency pin must not block refresh after the user
-                // has explicitly unpinned the currently edited pair.
-                factors.put(c, r.value);
-                sources.put(c, r.source);
+            String key = e.getKey();
+            RateProvider.Rate rate = e.getValue();
+            if (!key.contains(">")) continue;
+            String[] parts = key.split(">", 2);
+            if (parts.length != 2 || !factors.containsKey(parts[0]) || !factors.containsKey(parts[1])) continue;
+            apiCache.put(key, rate.value);
+            apiSources.put(key, rate.source);
+            String reverse = pairKey(parts[1], parts[0]);
+            String existing = pairRates.containsKey(key) ? key : (pairRates.containsKey(reverse) ? reverse : null);
+            if (existing != null && pairPinned.containsKey(existing) && pairPinned.get(existing)) continue;
+            if (existing != null && !existing.equals(key)) {
+                pairRates.remove(existing); pairSources.remove(existing); pairPinned.remove(existing);
             }
+            pairRates.put(key, rate.value);
+            pairSources.put(key, rate.source);
+            pairPinned.putIfAbsent(key, false);
         }
-        java.util.Iterator<String> pairIt=pairRates.keySet().iterator();
-        while(pairIt.hasNext()) { String key=pairIt.next(); String[] p=key.split(">",2); boolean refreshed=rates.containsKey(p[0])&&rates.containsKey(p[1]); if(refreshed && !(pairPinned.containsKey(key)&&pairPinned.get(key))) { pairIt.remove(); pairSources.remove(key); pairPinned.remove(key); } }
+        // Keep USD-based factors only as a compatibility cache for the Add Currency flow.
+        for (String c : factors.keySet()) {
+            RateProvider.Rate r = rates.get("USD>" + c);
+            if (r != null) { factors.put(c, r.value); sources.put(c, r.source); apiCache.put(c, r.value); apiSources.put(c, r.source); }
+        }
         lastUpdate = updatedAt;
         staleFallback = false;
-
-        // A network refresh is independent of the settings dialog's Save/Cancel
-        // transaction. Update its rollback baseline too, so Cancel can discard
-        // manual edits without reverting freshly downloaded API rates.
         if (editSnapshot != null) {
             for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
-                String c = e.getKey();
-                RateProvider.Rate r = e.getValue();
-                editSnapshot.apiCache.put(c, r.value);
-                editSnapshot.apiSources.put(c, r.source);
-                if (editSnapshot.factors.containsKey(c)) {
-                    editSnapshot.factors.put(c, r.value);
-                    editSnapshot.sources.put(c, r.source);
+                String key=e.getKey(); RateProvider.Rate r=e.getValue();
+                if (key.contains(">")) {
+                    editSnapshot.apiCache.put(key,r.value); editSnapshot.apiSources.put(key,r.source);
+                    String[] p=key.split(">",2); String reverse=p.length==2?p[1]+">"+p[0]:"";
+                    String existing=editSnapshot.pairRates.containsKey(key)?key:(editSnapshot.pairRates.containsKey(reverse)?reverse:null);
+                    if (existing != null && editSnapshot.pairPinned.containsKey(existing) && editSnapshot.pairPinned.get(existing)) continue;
+                    if (existing != null && !existing.equals(key)) { editSnapshot.pairRates.remove(existing); editSnapshot.pairSources.remove(existing); editSnapshot.pairPinned.remove(existing); }
+                    editSnapshot.pairRates.put(key,r.value); editSnapshot.pairSources.put(key,r.source); editSnapshot.pairPinned.putIfAbsent(key,false);
                 }
             }
-            java.util.Iterator<String> snapPairIt=editSnapshot.pairRates.keySet().iterator();
-            while(snapPairIt.hasNext()) { String key=snapPairIt.next(); String[] p=key.split(">",2); boolean refreshed=rates.containsKey(p[0])&&rates.containsKey(p[1]); if(refreshed && !(editSnapshot.pairPinned.containsKey(key)&&editSnapshot.pairPinned.get(key))) { snapPairIt.remove(); editSnapshot.pairSources.remove(key); editSnapshot.pairPinned.remove(key); } }
-            editSnapshot.lastUpdate = updatedAt;
+            editSnapshot.lastUpdate=updatedAt;
             persistSnapshotState(editSnapshot);
         }
         save();

@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.0.25  
-**Source archive:** `CurrencyConverter-v1.0.25-source-for-git.zip`
+**Version:** 1.1.0  
+**Source archive:** `CurrencyConverter-v1.1.0-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -12,14 +12,14 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
 ## Features
 
-- Dark saradmin interface and built-in numeric keypad. The bottom keypad row contains only decimal point, zero and backspace.
+- Dark saradmin interface with the blue/red interlocking C brand mark and circular exchange arrows, plus a built-in numeric keypad. The bottom keypad row contains only decimal point, zero and backspace.
 - Session-only amount input. The amount is cleared when the app goes to background.
 - Two to six selected currencies; base currency can be changed without changing the entered numeric amount.
-- Currency factors are normalized internally to USD only as a calculation reference. USD is not forced as the user's base currency.
+- Exchange rates are stored as independent directed currency-pair quotes. The selected base currency is only the view used by the converter; changing it does not rewrite pair rates or their source metadata.
 - Rates refresh once whenever the app is opened. `Update rates now` forces an immediate refresh of all available unpinned currency pairs. There is no periodic timer or update-interval setting.
 - Provider 1: Frankfurter API (`api.frankfurter.dev`). Provider 2: ExchangeRate-API Open Access (`open.er-api.com`). Provider 1 takes precedence; provider 2 fills missing currencies and is used if provider 1 is unavailable.
 - Fetched rates are cached locally. If providers are unavailable, the last saved rates remain available.
-- Source badges: 1 Frankfurter, 2 ExchangeRate-API, blue for manual or fallback data. Source belongs to the currency pair and is consistent in both conversion directions.
+- Source badges: 1 Frankfurter, 2 ExchangeRate-API (including cross-rates calculated from its USD quotes), blue for manual data. Source belongs to the currency pair and is consistent in both conversion directions.
 - Manual rate edits affect only the selected currency pair. `Keep this rate` protects that pair from API updates. Unpinned manual rates remain until the next successful API refresh.
 - Settings are transactional: Save commits rate edits, pin changes and currency additions/removals; Cancel discards changes made in the settings screen.
 - Result currencies can be reordered by dragging; the order persists across app restarts. Settings show the base currency first, followed by the remaining currencies in main-screen order.

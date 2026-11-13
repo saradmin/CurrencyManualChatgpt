@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0
+- Reworked rate refresh to request Frankfurter quotes separately for each selected currency as the base, producing pair-keyed rates.
+- Added ExchangeRate-API USD quotes as a fallback; cross-rates derived from its USD quotes are explicitly attributed to provider 2.
+- API quotes, source badges and Keep this rate state are stored per pair and remain stable when the selected base currency changes.
+- API refresh updates unpinned pairs only, including when the stored manual pair is oriented in the reverse direction.
+- Retained USD-based compatibility cache only for the Add Currency flow; it is not used as the source of displayed pair rates when pair quotes exist.
+
+
+## 1.0.26
+- Redesigned the launcher icon as the selected Current Currency concept: the existing diagonal blue/red C initials with subtle opposing exchange arrows.
+- Preserved the graphite background and the established saradmin blue/red palette.
+
 ## 1.0.25
 - Fixed settings Save handling: rate values and Keep this rate checkboxes are now applied together as one transaction. Checkbox changes are staged in the settings draft instead of being persisted immediately; Cancel rolls them back and Save commits them.
 - Removed rate-field focus-loss writes, avoiding race conditions between editing, checkbox changes and Save.

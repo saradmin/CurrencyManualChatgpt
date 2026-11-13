@@ -395,7 +395,7 @@ public class MainActivity extends Activity {
             updateNow.setEnabled(false);
             updateNow.setText("Updating rates…");
             network.execute(() -> {
-                RateProvider.Result result = new RateProvider().fetch();
+                RateProvider.Result result = new RateProvider().fetch(repository.getCurrencyCodes());
                 runOnUiThread(() -> {
                     rateRefreshInProgress = false;
                     if (isFinishing() || isDestroyed()) return;
@@ -612,7 +612,7 @@ public class MainActivity extends Activity {
 
     private void refreshRatesIfNeeded() {
         if (statusHint != null) statusHint.setText("Updating rates…");
-        network.execute(() -> { RateProvider.Result result=new RateProvider().fetch(); runOnUiThread(() -> {
+        network.execute(() -> { RateProvider.Result result=new RateProvider().fetch(repository.getCurrencyCodes()); runOnUiThread(() -> {
             if (result.anyApiSucceeded && !result.rates.isEmpty()) { repository.applyApiRates(result.rates); updateStatus(true); refreshResults(); }
             else { repository.markRefreshFailed(); updateStatus(false); }
         }); });

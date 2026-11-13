@@ -5,7 +5,25 @@
     android:viewportHeight="108">
     <path android:fillColor="#202329" android:pathData="M0,0h108v108h-108z" />
 
-    <!-- Blue currency C: bold geometric letterform with double currency cuts. -->
+    <!-- Circular exchange arrows, placed behind the two brand initials. -->
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#EAF2FF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M48,12 C65,7 82,17 87,32" />
+    <path android:fillColor="#EAF2FF"
+        android:pathData="M78,25 L89,35 L92,20 Z" />
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#EAF2FF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M60,96 C43,101 26,91 21,76" />
+    <path android:fillColor="#EAF2FF"
+        android:pathData="M30,83 L19,73 L16,88 Z" />
+
+    <!-- Blue C, upper-left. -->
     <path android:fillColor="@android:color/transparent"
         android:strokeColor="#2589E8"
         android:strokeWidth="9.5"
@@ -18,7 +36,7 @@
         android:strokeLineCap="round"
         android:pathData="M39,37 L56,37 M38,48 L55,48" />
 
-    <!-- Red currency C, diagonally offset down and right. -->
+    <!-- Red C, lower-right. -->
     <path android:fillColor="@android:color/transparent"
         android:strokeColor="#E34B55"
         android:strokeWidth="9.5"
