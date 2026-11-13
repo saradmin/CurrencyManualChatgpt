@@ -1,6 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Wait for the GitHub Actions run for the current commit, download its
-# versioned release artifact, verify the APK archive, and open Android installer.
+# versioned release artifact, verify it, and open the containing folder.
+# APK installation is intentionally left to the user's file manager because
+# Huawei/Android package installer rejects APKs launched from Termux on this device.
 
 set -u
 
@@ -19,7 +21,6 @@ fail() {
 command -v gh >/dev/null 2>&1 || fail "GitHub CLI (gh) is not installed."
 command -v git >/dev/null 2>&1 || fail "Git is not installed."
 command -v unzip >/dev/null 2>&1 || fail "unzip is not installed. Run: pkg install unzip"
-command -v termux-open >/dev/null 2>&1 || fail "termux-open is unavailable. Run this script in Termux."
 [ -f "$VERSION_FILE" ] || fail "VERSION.txt was not found at $VERSION_FILE"
 
 if ! gh auth status >/dev/null 2>&1; then
@@ -94,5 +95,9 @@ if command -v sha256sum >/dev/null 2>&1; then
   sha256sum "$APK"
 fi
 
-printf '\nOpening Android package installer...\n'
-termux-open "$APK" || fail "Could not open Android installer"
+printf '\nOpening the download folder (if Android allows it)...\n'
+if command -v termux-open >/dev/null 2>&1; then
+  termux-open "$DOWNLOAD_ROOT" >/dev/null 2>&1 || true
+fi
+printf '\nAutomatic APK installation is intentionally disabled.\n'
+printf 'Open this file in ES File Explorer and install it:\n%s\n' "$APK"

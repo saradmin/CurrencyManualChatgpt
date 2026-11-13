@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.8 (build 9)
+- Removed the clear-all key from the numeric keypad. The bottom row now contains only decimal point, zero and backspace, aligned as three equal keys.
+
+
+## 1.0.7 (build 8)
+- Replaced the text-only rate source legend with the same circular source badges used in the currency list: green 1, green 2, and blue manual/fallback.
+
 ## 1.0.6
 - Replaced emoji/superscript rate-source markers with compact green circular badges containing `1` (Frankfurter) or `2` (ExchangeRate-API).
 - Manual/fallback rates retain a blue badge without a number.

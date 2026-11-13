@@ -1,9 +1,9 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.0.6  
-**Android versionCode:** 6  
-**Archive:** `CurrencyConverter-v1.0.6-source-for-git.zip`
+**Version:** 1.0.8  
+**Android versionCode:** 9  
+**Archive:** `CurrencyConverter-v1.0.8-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -12,7 +12,7 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 The version is defined in `app/build.gradle`, recorded in `VERSION.txt`, and displayed in Settings. Tap the version row to open the About dialog. Every source archive uses the same version in its filename. Increment `versionCode` for every published build and update `versionName`, `VERSION.txt`, and `CHANGELOG.md` together.
 
 ## Features
-- Dark saradmin interface and built-in numeric keypad. The clear key (✕) is part of the keypad and uses the same key styling as digits.
+- Dark saradmin interface and built-in numeric keypad. The bottom keypad row contains only decimal point, zero and backspace.
 - Session-only amount input. The amount is cleared when the app goes to background.
 - Two to six selected currencies; base currency can be changed without changing the entered numeric amount.
 - Currency factors are normalized internally to USD only as a calculation reference. USD is not forced as the user's base currency.
@@ -32,7 +32,7 @@ GitHub Actions runs:
 gradle --no-daemon clean testDebugUnitTest assembleRelease
 ```
 
-The signed release APK is uploaded as the `CurrencyConverter-v1.0.6-release-apk` workflow artifact.
+The signed release APK is uploaded as the `CurrencyConverter-v1.0.8-release-apk` workflow artifact.
 
 ## Rate semantics
 Frankfurter uses central-bank reference data and its publication schedule. ExchangeRate-API Open Access updates daily. The app's refresh interval controls local polling, not the publication frequency of either provider. Rates are indicative and may differ from bank/card exchange rates.

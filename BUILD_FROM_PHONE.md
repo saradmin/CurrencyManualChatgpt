@@ -1,57 +1,15 @@
-# Build Currency Converter from phone
+# Build and install from an Android phone
 
-## One-time release signing setup
-
-1. Generate a private Android signing keystore in Termux. Keep the `.jks` file private and back it up securely.
-2. Add these GitHub Actions repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
-3. Never commit or upload the `.jks` file to the repository. Never share the passwords in chat.
-4. The workflow builds a signed release APK, verifies its signature with `apksigner`, and checks package/version metadata before publishing the artifact.
-
-Example keystore generation (run once; choose and save your own strong passwords):
+From the project root, copy the versioned source ZIP from Downloads, unpack it, commit and push. Then run the reusable build script:
 
 ```bash
-mkdir -p ~/private/currencymanual-signing
-chmod 700 ~/private/currencymanual-signing
-keytool -genkeypair -v \
-  -keystore ~/private/currencymanual-signing/currencymanual-release.jks \
-  -alias currencymanual \
-  -keyalg RSA -keysize 4096 -validity 10000
-```
-
-Create a base64 file for uploading as the `ANDROID_KEYSTORE_BASE64` secret:
-
-```bash
-base64 -w 0 ~/private/currencymanual-signing/currencymanual-release.jks \
-  > ~/private/currencymanual-signing/keystore.base64
-```
-
-Use GitHub CLI to set secrets without putting their values in shell history:
-
-```bash
-gh secret set ANDROID_KEYSTORE_BASE64 < ~/private/currencymanual-signing/keystore.base64
-read -s -p 'Keystore password: ' STORE_PASS; echo
-printf '%s' "$STORE_PASS" | gh secret set ANDROID_KEYSTORE_PASSWORD
-unset STORE_PASS
-read -s -p 'Key password: ' KEY_PASS; echo
-printf '%s' "$KEY_PASS" | gh secret set ANDROID_KEY_PASSWORD
-unset KEY_PASS
-echo 'currencymanual' | gh secret set ANDROID_KEY_ALIAS
-```
-
-The workflow requires all four secrets before building a release APK.
-
-## Download and install
-
-After a successful workflow run, download artifact `CurrencyConverter-v1.0.5-release-apk`. Install `app-release.apk`.
-
-The currently installed app was signed with a different key. To migrate to this permanent key, uninstall the old app once, then install this signed release. Future releases must use the same keystore and passwords or Android will reject in-place updates.
-
-## Repeatable build, download and install
-
-After committing and pushing the project to `main`, run this from Termux:
-
-```bash
+cd ~/storage/shared/projects/CurrencyManualChatgpt
+cp ~/storage/shared/Download/CurrencyConverter-v1.0.6-source-with-build-script.zip .
+unzip -o CurrencyConverter-v1.0.6-source-with-build-script.zip -d .
+git add -A
+git commit -m "Update build-install workflow"
+git push origin main
 bash scripts/build-install.sh
 ```
 
-The script reads the app version and artifact name from `VERSION.txt`, finds the GitHub Actions run for the exact current Git commit, waits until it finishes, and downloads the artifact only if the workflow succeeds. It then checks that `app-release.apk` exists and is a valid ZIP archive before opening the Android installer. It polls every five seconds without an arbitrary timeout; press Ctrl+C to stop waiting.
+The script waits for the GitHub Actions run matching the current commit, checks the workflow result, downloads the versioned release APK, and validates the APK archive. It does not launch Android's package installer because launching the APK from Termux has failed on the target Huawei device. It may open the download folder; install `app-release.apk` manually using ES File Explorer.

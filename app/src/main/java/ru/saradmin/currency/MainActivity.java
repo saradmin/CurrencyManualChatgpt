@@ -138,7 +138,7 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout buildNumericKeyboard() {
-        // Compact keypad: no title row. Clear-all is a regular key inside the keypad.
+        // Compact keypad: the bottom row contains only decimal point, zero and backspace.
         LinearLayout keyboard = column();
         keyboard.setBackground(rounded(CARD, BORDER));
         padding(keyboard, 5, 5, 5, 5);
@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
                 {"1", "2", "3"},
                 {"4", "5", "6"},
                 {"7", "8", "9"},
-                {".", "0", "⌫", "✕"}
+                {".", "0", "⌫"}
         };
         for (String[] line : keys) {
             LinearLayout r = row();
@@ -172,9 +172,7 @@ public class MainActivity extends Activity {
     }
     private void onKey(String key) {
         String current = amountInput.getText().toString();
-        if ("✕".equals(key)) {
-            current = "";
-        } else if ("⌫".equals(key)) {
+        if ("⌫".equals(key)) {
             if (!current.isEmpty()) current = current.substring(0, current.length() - 1);
         } else if (".".equals(key) || ",".equals(key)) {
             if (current.contains(".") || current.contains(",")) return;
@@ -288,12 +286,33 @@ public class MainActivity extends Activity {
         }).setNegativeButton("Cancel", null).show();
     }
 
+    private void addLegendSource(LinearLayout parent, int source, String caption) {
+        LinearLayout item = row();
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-2, -2);
+        itemParams.leftMargin = dp(7);
+        parent.addView(item, itemParams);
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+        item.addView(sourceBadge(source), badgeParams);
+        TextView text = label(caption, 10, false);
+        text.setTextColor(MUTED);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
+        textParams.leftMargin = dp(3);
+        item.addView(text, textParams);
+    }
+
     private void showSettings() {
         ScrollView scroll = new ScrollView(this); LinearLayout body = column(); padding(body, 18, 16, 18, 18); scroll.addView(body);
         TextView title = label("Currencies & Rates", 22, true); body.addView(title);
         TextView description = label("Each rate is shown against the current base currency. Changes are saved on this device.", 13, false);
         description.setTextColor(MUTED); LinearLayout.LayoutParams descP = new LinearLayout.LayoutParams(-1, -2); descP.topMargin = dp(8); body.addView(description, descP);
-        TextView apiInfo = label("Sources: ¹ Frankfurter · ² ExchangeRate-API · 🔵 manual/fallback rate", 11, false); apiInfo.setTextColor(MUTED); LinearLayout.LayoutParams aip = new LinearLayout.LayoutParams(-1,-2); aip.topMargin=dp(6); body.addView(apiInfo,aip);
+        LinearLayout apiInfo = row();
+        apiInfo.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams aip = new LinearLayout.LayoutParams(-1, -2); aip.topMargin = dp(8); body.addView(apiInfo, aip);
+        TextView sourcesLabel = label("Sources:", 11, false); sourcesLabel.setTextColor(MUTED); apiInfo.addView(sourcesLabel);
+        addLegendSource(apiInfo, 1, "Frankfurter");
+        addLegendSource(apiInfo, 2, "ExchangeRate-API");
+        addLegendSource(apiInfo, 0, "Manual / fallback");
         Button interval = smallButton("Update interval: " + intervalLabel(repository.getIntervalMinutes()), true); LinearLayout.LayoutParams intp=new LinearLayout.LayoutParams(-1,dp(42)); intp.topMargin=dp(10); body.addView(interval,intp);
         interval.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Update interval").setItems(new String[]{"15 minutes","30 minutes","1 hour","6 hours","12 hours","24 hours"},(d,w)->{long[] vals={15,30,60,360,720,1440};repository.setIntervalMinutes(vals[w]);interval.setText("Update interval: "+intervalLabel(vals[w]));refreshRatesIfNeeded(true);}).show());
         Button updateNow=smallButton("Update rates now",true); LinearLayout.LayoutParams unp=new LinearLayout.LayoutParams(-1,dp(42));unp.topMargin=dp(6);body.addView(updateNow,unp);updateNow.setOnClickListener(v->refreshRatesIfNeeded(true));
