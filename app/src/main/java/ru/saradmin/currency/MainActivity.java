@@ -18,6 +18,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -402,6 +403,17 @@ public class MainActivity extends Activity {
                 rate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
                 rate.setHint("Rate"); rate.setSelectAllOnFocus(true); rate.setText(CurrencyDisplayFormat.formatEditable(repository.getRate(item.code)));
                 rateColumn.addView(rate, new LinearLayout.LayoutParams(-1, dp(34)));
+                CheckBox keepRate = new CheckBox(this);
+                keepRate.setText("Keep this rate");
+                keepRate.setTextSize(10);
+                keepRate.setTextColor(MUTED);
+                keepRate.setButtonTintList(new android.content.res.ColorStateList(
+                        new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                        new int[]{0xff2589e8, MUTED}));
+                keepRate.setPadding(0, 0, 0, 0);
+                keepRate.setChecked(repository.isPinned(item.code));
+                rateColumn.addView(keepRate, new LinearLayout.LayoutParams(-1, dp(28)));
+                keepRate.setOnCheckedChangeListener((button, checked) -> repository.setPinned(item.code, checked));
                 settingsRateInputs.put(item.code, rate);
                 // Keep edits in the in-memory draft while the settings dialog is open.
                 // After Cancel/Save dismisses the dialog, focus loss must never write again.
@@ -426,10 +438,10 @@ public class MainActivity extends Activity {
         add.setEnabled(repository.getCurrencies().size() < repository.getMaxCurrencies()); add.setOnClickListener(v -> showAddCurrency());
         TextView count = label("Currencies added: " + repository.getCurrencies().size() + " of " + repository.getMaxCurrencies(), 12, false); count.setTextColor(MUTED); count.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams countP = new LinearLayout.LayoutParams(-1, -2); countP.topMargin = dp(10); body.addView(count, countP);
-        TextView version = label("Currency Converter  v" + getAppVersionName() + "  (" + getAppVersionCode() + ")", 11, false);
+        TextView version = label("Currency Converter  v" + getAppVersionName(), 11, false);
         version.setTextColor(MUTED); version.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams versionP = new LinearLayout.LayoutParams(-1, -2); versionP.topMargin = dp(18); body.addView(version, versionP);
-        version.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("About").setMessage("Currency Converter\nVersion: " + getAppVersionName() + "\nBuild number: " + getAppVersionCode() + "\nPackage: " + getPackageName()).setPositiveButton("Close", null).show());
+        version.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("About").setMessage("Currency Converter\nVersion: " + getAppVersionName() + "\nPackage: " + getPackageName()).setPositiveButton("Close", null).show());
 
         settingsDialog = new AlertDialog.Builder(this).setView(scroll)
                 .setPositiveButton("Save", null)
@@ -473,13 +485,6 @@ public class MainActivity extends Activity {
         catch (Exception e) { return "unknown"; }
     }
 
-    private long getAppVersionCode() {
-        try {
-            android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-            if (android.os.Build.VERSION.SDK_INT >= 28) return info.getLongVersionCode();
-            return info.versionCode;
-        } catch (Exception e) { return 0L; }
-    }
 
     private boolean applySettingsRateInputs() {
         for (Map.Entry<String, EditText> entry : settingsRateInputs.entrySet()) {

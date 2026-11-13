@@ -27,10 +27,11 @@ if ! gh auth status >/dev/null 2>&1; then
   fail "GitHub CLI is not authenticated. Run: gh auth login"
 fi
 
+APP_NAME="$(sed -n 's/^App name: *//p' "$VERSION_FILE" | head -n 1)"
 VERSION="$(sed -n 's/^Version: *//p' "$VERSION_FILE" | head -n 1)"
-ARTIFACT="$(sed -n 's/^Release artifact: *//p' "$VERSION_FILE" | head -n 1)"
+ARTIFACT="CurrencyConverter-v${VERSION}-release-apk"
+[ -n "$APP_NAME" ] || fail "Could not read App name from VERSION.txt"
 [ -n "$VERSION" ] || fail "Could not read Version from VERSION.txt"
-[ -n "$ARTIFACT" ] || fail "Could not read Release artifact from VERSION.txt"
 
 cd "$PROJECT_ROOT" || fail "Cannot enter project directory"
 COMMIT="$(git rev-parse HEAD 2>/dev/null)" || fail "This directory is not a Git repository"
@@ -83,11 +84,15 @@ gh run download "$RUN_ID" \
   --name "$ARTIFACT" \
   --dir "$DOWNLOAD_ROOT" || fail "Artifact download failed"
 
-APK="$DOWNLOAD_ROOT/app-release.apk"
-[ -s "$APK" ] || fail "Downloaded artifact does not contain a non-empty app-release.apk"
-unzip -t "$APK" >/dev/null 2>&1 || fail "Downloaded APK failed ZIP integrity check"
+APK_SOURCE="$DOWNLOAD_ROOT/app-release.apk"
+[ -s "$APK_SOURCE" ] || fail "Downloaded artifact does not contain a non-empty app-release.apk"
+unzip -t "$APK_SOURCE" >/dev/null 2>&1 || fail "Downloaded APK failed ZIP integrity check"
+APP_FILE_NAME="$(printf '%s' "$APP_NAME" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9._-')-v${VERSION}.apk"
+APK="$DOWNLOAD_ROOT/$APP_FILE_NAME"
+mv "$APK_SOURCE" "$APK" || fail "Could not rename downloaded APK"
 
 printf '\nAPK downloaded and archive integrity verified.\n'
+printf 'App: %s\n' "$APP_NAME"
 printf 'Version: %s\n' "$VERSION"
 printf 'File: %s\n' "$APK"
 ls -lh "$APK"

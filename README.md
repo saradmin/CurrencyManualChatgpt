@@ -1,15 +1,14 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.0.13  
-**Android versionCode:** 14  
-**Archive:** `CurrencyConverter-v1.0.13-source-for-git.zip`
+**Version:** 1.0.16  
+**Source archive:** `CurrencyConverter-v1.0.16-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
-## Version tracking
+## Versioning
 
-The version is defined in `app/build.gradle`, recorded in `VERSION.txt`, and displayed in Settings. Tap the version row to open the About dialog. Every source archive uses the same version in its filename. Increment `versionCode` for every published build and update `versionName`, `VERSION.txt`, and `CHANGELOG.md` together.
+`VERSION.txt` is the single source of truth for the app version. For every release, change only the `Version` value there. Gradle automatically derives Android's mandatory internal `versionCode` from the semantic version; it is not maintained or displayed separately. The app UI and About dialog show only the app version. The workflow artifact name and Termux APK filename are also generated from this same version.
 
 ## Features
 - Dark saradmin interface and built-in numeric keypad. The bottom keypad row contains only decimal point, zero and backspace.
@@ -19,32 +18,16 @@ The version is defined in `app/build.gradle`, recorded in `VERSION.txt`, and dis
 - Automatic rate refresh at the configured interval (15 minutes by default; 30 minutes, 1, 6, 12 or 24 hours are available).
 - Provider 1: Frankfurter API (`api.frankfurter.dev`). Provider 2: ExchangeRate-API Open Access (`open.er-api.com`). Provider 1 takes precedence; provider 2 fills missing currencies and is used if provider 1 is unavailable.
 - All fetched rates are cached locally. If both services are unavailable, the last saved values remain available. Manually edited rates are not overwritten by automatic updates.
-- Source badges: ¹ Frankfurter, ² ExchangeRate-API, blue for manual or fallback data.
-- Add currencies from the local catalog. A cached API rate is used automatically when available; otherwise the app asks for a manual rate. Existing currency rates can be edited in Settings.
-- Remove additional currencies (at least two currencies must remain).
+- Source badges: 1 Frankfurter, 2 ExchangeRate-API, blue for manual or fallback data.
+- Per-currency Keep this rate option protects a manually set rate from API updates.
 - Settings are edited as a draft: Save persists rate edits, currency additions/removals and update interval; Cancel discards all changes made since the settings screen was opened.
-- Reorder result currencies by long-pressing a currency card and dragging it; the order is saved across app restarts.
-- Result amounts and displayed rates use exactly two decimal places; empty amounts show no placeholder.
+- Result currencies can be reordered by dragging; the order persists across app restarts.
+- Amounts and rates use space-separated thousands grouping and two decimal places in results.
 
 ## Build
-GitHub Actions runs:
 
-```bash
-gradle --no-daemon clean testDebugUnitTest assembleRelease
-```
-
-The signed release APK is uploaded as the `CurrencyConverter-v1.0.13-release-apk` workflow artifact.
-
-## Rate semantics
-Frankfurter uses central-bank reference data and its publication schedule. ExchangeRate-API Open Access updates daily. The app's refresh interval controls local polling, not the publication frequency of either provider. Rates are indicative and may differ from bank/card exchange rates.
-
-## Tests
-JUnit tests cover conversion arithmetic, cross rates, validation, provider priority, fallback merging and missing-rate handling. Network availability and live provider responses are not assumed by unit tests.
-
-## Release signing (1.0.2+)
-
-Release APKs are signed with a persistent private keystore supplied through GitHub Actions Secrets. Follow `BUILD_FROM_PHONE.md` for the one-time setup. Do not commit the keystore or passwords. CI verifies the APK signature and package/version metadata before uploading the release artifact.
+GitHub Actions runs unit tests and builds a signed release APK. The artifact name is generated from `VERSION.txt`.
 
 ## Build and install from Termux
 
-After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script detects the current commit, waits for its GitHub Actions run, checks the result, downloads the versioned artifact from `VERSION.txt`, validates the APK archive, and prints the APK path for manual installation with ES File Explorer. Automatic installer launch is disabled for this Huawei device.
+After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script waits for the GitHub Actions run matching the pushed commit, checks the result, downloads the artifact, verifies the APK archive, and renames it using the app name and version. Install manually through ES File Explorer on this Huawei device.
