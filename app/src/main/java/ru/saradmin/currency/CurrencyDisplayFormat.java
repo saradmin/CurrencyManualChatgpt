@@ -11,10 +11,23 @@ public final class CurrencyDisplayFormat {
     private CurrencyDisplayFormat() {}
 
     public static String format(BigDecimal value) {
+        return formatWithPattern(value, "#,##0.00");
+    }
+
+    /** Formats an exchange rate to four decimals, never displaying a positive rate as zero. */
+    public static String formatRate(BigDecimal value) {
+        BigDecimal rounded = value.setScale(4, RoundingMode.HALF_UP);
+        if (value.signum() > 0 && rounded.signum() == 0) {
+            rounded = new BigDecimal("0.0001");
+        }
+        return formatWithPattern(rounded, "#,##0.0000");
+    }
+
+    private static String formatWithPattern(BigDecimal value, String pattern) {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
         symbols.setGroupingSeparator(' ');
         symbols.setDecimalSeparator('.');
-        DecimalFormat format = new DecimalFormat("#,##0.00", symbols);
+        DecimalFormat format = new DecimalFormat(pattern, symbols);
         format.setGroupingUsed(true);
         format.setGroupingSize(3);
         format.setRoundingMode(RoundingMode.HALF_UP);

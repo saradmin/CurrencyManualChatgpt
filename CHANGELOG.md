@@ -1,3 +1,7 @@
+## 1.1.1 display precision update
+- Main-screen exchange rates now show four decimal places.
+- Positive rates that would round to 0.0000 are displayed as 0.0001 so a non-zero rate is never shown as zero.
+
 # Changelog
 
 ## 1.1.0
@@ -146,3 +150,10 @@
 - Remove accidentally committed source ZIP archives and the stray nested `cc/` extraction directory before each release commit.
 - Add `.gitignore` rules preventing source archives, APKs, build outputs and local signing files from entering Git.
 - Shorten live GitHub Actions progress refresh interval from 8 to 5 seconds.
+
+## 1.1.1
+- Keep this rate now applies to manually maintained currency pairs only.
+- Unchecking Keep requests a fresh quote for that pair; if APIs are unavailable, the last manual quote and blue source badge are preserved.
+- Global API refreshes are not applied while settings are being edited. The manual refresh action first commits and closes settings, then refreshes rates.
+- Pair-specific refresh results remain part of the settings draft and are rolled back by Cancel.
+- Updated launcher icon to the approved overlapping blue/red C exchange-arrow concept.

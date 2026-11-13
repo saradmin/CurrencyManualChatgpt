@@ -65,11 +65,13 @@ public class MainActivity extends Activity {
     private TextView statusHint;
     private boolean settingsEditActive = false;
     private boolean rateRefreshInProgress = false;
+    private int pendingPairRefreshes = 0;
     private boolean initialRefreshStarted = false;
     private boolean settingsTemporarilyHidden = false;
     private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
     private final java.util.LinkedHashMap<String, String> settingsOriginalRates = new java.util.LinkedHashMap<>();
     private final java.util.LinkedHashMap<String, CheckBox> settingsPinInputs = new java.util.LinkedHashMap<>();
+    private final java.util.LinkedHashMap<String, TextView> settingsSourceBadges = new java.util.LinkedHashMap<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -224,7 +226,7 @@ public class MainActivity extends Activity {
             codeRow.addView(sourceBadge(repository.getSource(item.code)), badgeParams);
             details.addView(codeRow);
             BigDecimal rate = repository.getRate(item.code);
-            TextView rateText = label("1 " + base + " = " + format(rate), 9, false);
+            TextView rateText = label("1 " + base + " = " + CurrencyDisplayFormat.formatRate(rate), 9, false);
             rateText.setTextColor(MUTED);
             rateText.setSingleLine(true);
             rateText.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -363,6 +365,7 @@ public class MainActivity extends Activity {
         settingsRateInputs.clear();
         settingsOriginalRates.clear();
         settingsPinInputs.clear();
+        settingsSourceBadges.clear();
         if (!settingsEditActive) {
             repository.beginEdit();
             settingsEditActive = true;
@@ -370,7 +373,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout body = column(); padding(body, 18, 16, 18, 18); scroll.addView(body);
         TextView title = label("Currencies & Rates", 22, true); body.addView(title);
-        TextView description = label("Each rate is shown against the current base currency. Changes are applied when you save.", 13, false);
+        TextView description = label("Rates are edited here as a draft. Update rates fills non-fixed pairs; only Save stores changes.", 13, false);
         description.setTextColor(MUTED); LinearLayout.LayoutParams descP = new LinearLayout.LayoutParams(-1, -2); descP.topMargin = dp(8); body.addView(description, descP);
 
         LinearLayout sourceBlock = column();
@@ -382,41 +385,15 @@ public class MainActivity extends Activity {
         LinearLayout fallbackRow = row(); LinearLayout.LayoutParams frp = new LinearLayout.LayoutParams(-1, -2); frp.topMargin = dp(4); sourceBlock.addView(fallbackRow, frp);
         addLegendSource(fallbackRow, 0, "Manual / fallback");
 
-        TextView autoUpdateNote = label("Rates refresh automatically when the app opens.", 12, false);
+        TextView autoUpdateNote = label("Rates refresh on app open, here by button, or when Keep is unchecked.", 12, false);
         autoUpdateNote.setTextColor(MUTED);
         LinearLayout.LayoutParams autoNoteP = new LinearLayout.LayoutParams(-1, -2); autoNoteP.topMargin = dp(10); body.addView(autoUpdateNote, autoNoteP);
         Button updateNow = smallButton("Update rates now", true); LinearLayout.LayoutParams unp = new LinearLayout.LayoutParams(-1, dp(42)); unp.topMargin = dp(6); body.addView(updateNow, unp);
         updateNow.setOnClickListener(v -> {
-            if (rateRefreshInProgress) return;
-            // Keep edits already entered in the open settings draft before refreshing.
-            if (!applySettingsRateInputs()) return;
+            if (rateRefreshInProgress || pendingPairRefreshes > 0 || !applySettingsRateInputs()) return;
             applySettingsPinInputs();
-            rateRefreshInProgress = true;
             updateNow.setEnabled(false);
-            updateNow.setText("Updating rates…");
-            network.execute(() -> {
-                RateProvider.Result result = new RateProvider().fetch(repository.getCurrencyCodes());
-                runOnUiThread(() -> {
-                    rateRefreshInProgress = false;
-                    if (isFinishing() || isDestroyed()) return;
-                    if (result.anyApiSucceeded && !result.rates.isEmpty()) {
-                        repository.applyApiRates(result.rates);
-                        updateStatus(true);
-                        refreshResults();
-                        Toast.makeText(this, "Rates updated", Toast.LENGTH_SHORT).show();
-                    } else {
-                        repository.markRefreshFailed();
-                        updateStatus(false);
-                        Toast.makeText(this, "Rate update failed. Check your internet connection.", Toast.LENGTH_LONG).show();
-                    }
-                    // Rebuild the settings view so the new values and source badges are visible.
-                    if (settingsDialog != null && settingsDialog.isShowing()) {
-                        settingsTemporarilyHidden = true;
-                        settingsDialog.dismiss();
-                        showSettings();
-                    }
-                });
-            });
+            updateSettingsRates(updateNow);
         });
 
         for (CurrencyItem item : repository.getCurrencies()) {
@@ -431,7 +408,9 @@ public class MainActivity extends Activity {
 
             if (!isBase) {
                 LinearLayout.LayoutParams badgeP = new LinearLayout.LayoutParams(dp(20), dp(20)); badgeP.leftMargin = dp(5); badgeP.rightMargin = dp(7);
-                line.addView(sourceBadge(repository.getSource(item.code)), badgeP);
+                TextView pairSourceBadge = sourceBadge(repository.getSource(item.code));
+                settingsSourceBadges.put(item.code, pairSourceBadge);
+                line.addView(pairSourceBadge, badgeP);
                 LinearLayout rateColumn = column();
                 LinearLayout.LayoutParams rateColumnP = new LinearLayout.LayoutParams(0, -2, 1); rateColumnP.leftMargin = dp(2); line.addView(rateColumn, rateColumnP);
                 TextView prefix = label("1 " + repository.getBaseCode() + " =", 10, false); prefix.setTextColor(MUTED); rateColumn.addView(prefix);
@@ -455,6 +434,57 @@ public class MainActivity extends Activity {
                 // Do not persist it immediately from the widget listener.
                 settingsPinInputs.put(item.code, keepRate);
                 settingsRateInputs.put(item.code, rate);
+                final boolean[] previousKeepState = {keepRate.isChecked()};
+                final boolean[] revertingKeep = {false};
+                keepRate.setOnCheckedChangeListener((button, checked) -> {
+                    if (revertingKeep[0]) { previousKeepState[0] = checked; return; }
+                    boolean wasChecked = previousKeepState[0];
+                    previousKeepState[0] = checked;
+                    if (!wasChecked && checked) {
+                        if (!applySettingsRateInputs() || repository.getSource(item.code) != 0) {
+                            revertingKeep[0] = true; keepRate.setChecked(false); revertingKeep[0] = false;
+                            Toast.makeText(this, "Keep is available only for a manually edited rate", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        repository.setPinned(item.code, true);
+                    }
+                    if (wasChecked && !checked) {
+                        if (!applySettingsRateInputs()) {
+                            revertingKeep[0] = true; keepRate.setChecked(true); revertingKeep[0] = false;
+                            return;
+                        }
+                        repository.setPinned(item.code, false); // draft only while the editor is open
+                        final String pairBase = repository.getBaseCode();
+                        final String pairTarget = item.code;
+                        keepRate.setEnabled(false);
+                        pendingPairRefreshes++;
+                        if (settingsDialog != null && settingsDialog.isShowing())
+                            settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                        network.execute(() -> {
+                            RateProvider.Rate fetched = new RateProvider().fetchPair(pairBase, pairTarget);
+                            runOnUiThread(() -> {
+                                if (isFinishing() || isDestroyed()) return;
+                                pendingPairRefreshes = Math.max(0, pendingPairRefreshes - 1);
+                                keepRate.setEnabled(true);
+                                if (settingsDialog != null && settingsDialog.isShowing() && pendingPairRefreshes == 0 && !rateRefreshInProgress)
+                                    settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                                if (!settingsEditActive || settingsDialog == null || !settingsDialog.isShowing()) return;
+                                if (fetched == null) {
+                                    Toast.makeText(this, "API unavailable. The last manual rate is kept.", Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+                                repository.applyApiPairToDraft(pairBase, pairTarget, fetched);
+                                rate.setText(CurrencyDisplayFormat.formatEditable(fetched.value));
+                                pairSourceBadge.setText(RateSourceLabel.forSource(fetched.source));
+                                GradientDrawable badgeShape = new GradientDrawable(); badgeShape.setShape(GradientDrawable.OVAL);
+                                badgeShape.setColor(0xff20b85a); pairSourceBadge.setBackground(badgeShape);
+                                pairSourceBadge.setContentDescription(fetched.source == 1 ? "Frankfurter rate" : "ExchangeRate-API rate");
+                                settingsOriginalRates.put(item.code, normalizeRateText(rate.getText().toString()));
+                                Toast.makeText(this, fetched.source == 1 ? "Frankfurter rate loaded" : "ExchangeRate-API rate loaded", Toast.LENGTH_SHORT).show();
+                            });
+                        });
+                    }
+                });
 
                 TextView remove = label("×", 27, false); remove.setTextColor(0xffE34B55); remove.setGravity(Gravity.CENTER);
                 GradientDrawable removeBg = new GradientDrawable(); removeBg.setShape(GradientDrawable.OVAL); removeBg.setColor(0x22E34B55); remove.setBackground(removeBg);
@@ -486,7 +516,9 @@ public class MainActivity extends Activity {
                     refreshResults();
                 })
                 .create();
-        settingsDialog.setOnShowListener(d -> settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        settingsDialog.setOnShowListener(d -> {
+            settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(pendingPairRefreshes == 0 && !rateRefreshInProgress);
+            settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             // Commit rate fields and Keep checkboxes together from the visible draft.
             // No widget writes directly to persistent storage while this dialog is open.
             if (!applySettingsRateInputs()) return;
@@ -496,7 +528,8 @@ public class MainActivity extends Activity {
             updateBaseLabel();
             refreshResults();
             settingsDialog.dismiss();
-        }));
+        });
+        });
         settingsDialog.setOnCancelListener(d -> {
             repository.cancelEdit();
             settingsEditActive = false;
@@ -610,7 +643,77 @@ public class MainActivity extends Activity {
                 }).show();
     }
 
+    /** Refreshes only non-fixed pairs into the active settings draft. Save is the only commit. */
+    private void updateSettingsRates(Button updateButton) {
+        if (!settingsEditActive || rateRefreshInProgress) return;
+        rateRefreshInProgress = true;
+        if (settingsDialog != null && settingsDialog.isShowing())
+            settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+        network.execute(() -> {
+            RateProvider.Result result = new RateProvider().fetch(repository.getCurrencyCodes());
+            runOnUiThread(() -> {
+                rateRefreshInProgress = false;
+                if (isFinishing() || isDestroyed()) return;
+                if (!settingsEditActive || settingsDialog == null || !settingsDialog.isShowing()) return;
+                if (result.anyApiSucceeded && !result.rates.isEmpty()) {
+                    repository.applyApiRates(result.rates);
+                    for (Map.Entry<String, EditText> entry : settingsRateInputs.entrySet()) {
+                        String target = entry.getKey();
+                        if (repository.isPinned(target)) continue;
+                        BigDecimal value = repository.getRate(target);
+                        if (value == null || value.signum() <= 0) continue;
+                        EditText field = entry.getValue();
+                        String text = CurrencyDisplayFormat.formatEditable(value);
+                        field.setText(text);
+                        settingsOriginalRates.put(target, normalizeRateText(text));
+                    }
+                    // Refresh source badges after applying the draft rates.
+                    refreshSettingsSourceBadges();
+                    Toast.makeText(this, "Rates updated in settings. Press Save to apply.", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Rate update failed. Current settings values are unchanged.", Toast.LENGTH_LONG).show();
+                }
+                if (updateButton != null) updateButton.setEnabled(true);
+                if (settingsDialog != null && settingsDialog.isShowing() && pendingPairRefreshes == 0)
+                    settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+            });
+        });
+    }
+
+    private void refreshSettingsSourceBadges() {
+        for (Map.Entry<String, TextView> entry : settingsSourceBadges.entrySet()) {
+            int source = repository.getSource(entry.getKey());
+            TextView badge = entry.getValue();
+            badge.setText(RateSourceLabel.forSource(source));
+            GradientDrawable shape = new GradientDrawable();
+            shape.setShape(GradientDrawable.OVAL);
+            shape.setColor(source == 0 ? 0xff2589e8 : 0xff20b85a);
+            badge.setBackground(shape);
+            badge.setContentDescription(source == 0 ? "Manual rate" : (source == 1 ? "Frankfurter rate" : "ExchangeRate-API rate"));
+        }
+    }
+
+    private void startManualRateRefresh() {
+        if (rateRefreshInProgress) return;
+        rateRefreshInProgress = true;
+        if (statusHint != null) statusHint.setText("Updating rates…");
+        network.execute(() -> {
+            RateProvider.Result result = new RateProvider().fetch(repository.getCurrencyCodes());
+            runOnUiThread(() -> {
+                rateRefreshInProgress = false;
+                if (isFinishing() || isDestroyed()) return;
+                if (result.anyApiSucceeded && !result.rates.isEmpty()) {
+                    repository.applyApiRates(result.rates); updateStatus(true); refreshResults();
+                    Toast.makeText(this, "Rates updated", Toast.LENGTH_SHORT).show();
+                } else {
+                    updateStatus(false); Toast.makeText(this, "Rate update failed. Saved rates are kept.", Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
     private void refreshRatesIfNeeded() {
+        if (settingsEditActive || rateRefreshInProgress) return;
         if (statusHint != null) statusHint.setText("Updating rates…");
         network.execute(() -> { RateProvider.Result result=new RateProvider().fetch(repository.getCurrencyCodes()); runOnUiThread(() -> {
             if (result.anyApiSucceeded && !result.rates.isEmpty()) { repository.applyApiRates(result.rates); updateStatus(true); refreshResults(); }

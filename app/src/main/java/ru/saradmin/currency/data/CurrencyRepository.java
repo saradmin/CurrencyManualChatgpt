@@ -121,6 +121,10 @@ public final class CurrencyRepository {
     public synchronized boolean isPinned(String c){String key=matchingPairKey(baseCode,c);return key!=null&&pairPinned.containsKey(key)&&pairPinned.get(key); }
     public synchronized void setPinned(String c,boolean value){
         if(!factors.containsKey(c)||c.equals(baseCode))return;
+        if (value) {
+            String manualKey = matchingPairKey(baseCode, c);
+            if (manualKey == null || !pairSources.containsKey(manualKey) || pairSources.get(manualKey) != 0) return;
+        } // Only an explicitly edited manual pair can be kept.
         String key=matchingPairKey(baseCode,c);
         if(key==null)key=pairKey(baseCode,c);
         if(value && !pairRates.containsKey(key)){
@@ -159,6 +163,8 @@ public final class CurrencyRepository {
     }
 
     public synchronized void applyApiRates(Map<String,RateProvider.Rate> rates) {
+        // During settings editing, update only the in-memory draft. Nothing is persisted
+        // until commitEdit(); cancelEdit() restores the complete pre-edit snapshot.
         long updatedAt = System.currentTimeMillis();
         // Pair-keyed API quotes are authoritative. Never overwrite a pinned pair.
         for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
@@ -186,23 +192,22 @@ public final class CurrencyRepository {
         }
         lastUpdate = updatedAt;
         staleFallback = false;
-        if (editSnapshot != null) {
-            for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
-                String key=e.getKey(); RateProvider.Rate r=e.getValue();
-                if (key.contains(">")) {
-                    editSnapshot.apiCache.put(key,r.value); editSnapshot.apiSources.put(key,r.source);
-                    String[] p=key.split(">",2); String reverse=p.length==2?p[1]+">"+p[0]:"";
-                    String existing=editSnapshot.pairRates.containsKey(key)?key:(editSnapshot.pairRates.containsKey(reverse)?reverse:null);
-                    if (existing != null && editSnapshot.pairPinned.containsKey(existing) && editSnapshot.pairPinned.get(existing)) continue;
-                    if (existing != null && !existing.equals(key)) { editSnapshot.pairRates.remove(existing); editSnapshot.pairSources.remove(existing); editSnapshot.pairPinned.remove(existing); }
-                    editSnapshot.pairRates.put(key,r.value); editSnapshot.pairSources.put(key,r.source); editSnapshot.pairPinned.putIfAbsent(key,false);
-                }
-            }
-            editSnapshot.lastUpdate=updatedAt;
-            persistSnapshotState(editSnapshot);
-        }
-        save();
+        if (editSnapshot == null) save();
     }
+    /** Apply a single-pair response to the active settings draft only. */
+    public synchronized void applyApiPairToDraft(String base, String target, RateProvider.Rate rate) {
+        if (editSnapshot == null || rate == null || rate.value == null || rate.value.signum() <= 0) return;
+        String key = pairKey(base, target);
+        String reverse = pairKey(target, base);
+        String existing = pairRates.containsKey(key) ? key : (pairRates.containsKey(reverse) ? reverse : null);
+        if (existing != null) {
+            pairRates.remove(existing); pairSources.remove(existing); pairPinned.remove(existing);
+        }
+        pairRates.put(key, rate.value);
+        pairSources.put(key, rate.source);
+        pairPinned.put(key, false);
+    }
+
     public synchronized void setRateFromBase(String target,BigDecimal rate){if(!factors.containsKey(target)||target.equals(baseCode)||rate==null||rate.signum()<=0)throw new IllegalArgumentException();String key=pairKey(baseCode,target);String reverse=pairKey(target,baseCode);pairRates.remove(reverse);pairSources.remove(reverse);pairPinned.remove(reverse);pairRates.put(key,rate);pairSources.put(key,0);pairPinned.putIfAbsent(key,false);save();}
     public synchronized boolean addCurrency(String code,BigDecimal rate){if(rate==null||rate.signum()<=0)return false;return addCurrencyFactor(code,ru.saradmin.currency.core.ConversionEngine.factorFromRate(factors.get(baseCode),rate),0);}
     public synchronized boolean addCurrencyFactor(String code,BigDecimal factor,int source){if(factors.size()>=MAX_CURRENCIES||factors.containsKey(code)||CurrencyCatalog.find(code)==null||factor==null||factor.signum()<=0)return false;factors.put(code,factor);sources.put(code,source);pinned.put(code,false);save();return true;}

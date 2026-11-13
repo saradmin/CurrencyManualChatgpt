@@ -22,6 +22,25 @@ public final class RateProvider {
     }
     public Result fetch() { return fetch(java.util.Arrays.asList("USD", "EUR", "GBP", "RUB", "KZT", "EGP")); }
 
+    /** Fetch one requested pair only. Source 1 is a direct Frankfurter quote;
+     * source 2 is a cross-rate derived from the USD-based ExchangeRate-API. */
+    public Rate fetchPair(String base, String target) {
+        if (base == null || target == null || base.equals(target)) return null;
+        try {
+            Map<String,BigDecimal> direct = parseFrankfurter(get("https://api.frankfurter.dev/v1/latest?base=" + base));
+            BigDecimal value = direct.get(target);
+            if (value != null && value.signum() > 0) return new Rate(value, 1);
+        } catch (Exception ignored) { }
+        try {
+            Map<String,BigDecimal> usd = parseExchangeRate(get("https://open.er-api.com/v6/latest/USD"));
+            BigDecimal baseUsd = "USD".equals(base) ? BigDecimal.ONE : usd.get(base);
+            BigDecimal targetUsd = "USD".equals(target) ? BigDecimal.ONE : usd.get(target);
+            if (baseUsd != null && targetUsd != null && baseUsd.signum() > 0 && targetUsd.signum() > 0)
+                return new Rate(targetUsd.divide(baseUsd, new java.math.MathContext(16, java.math.RoundingMode.HALF_UP)), 2);
+        } catch (Exception ignored) { }
+        return null;
+    }
+
     public Result fetch(java.util.List<String> currencies) {
         Map<String,Rate> pairs = new LinkedHashMap<>();
         boolean any = false;

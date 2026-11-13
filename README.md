@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.0  
-**Source archive:** `CurrencyConverter-v1.1.0-source-for-git.zip`
+**Version:** 1.1.1  
+**Source archive:** `CurrencyConverter-v1.1.1-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -23,7 +23,7 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 - Manual rate edits affect only the selected currency pair. `Keep this rate` protects that pair from API updates. Unpinned manual rates remain until the next successful API refresh.
 - Settings are transactional: Save commits rate edits, pin changes and currency additions/removals; Cancel discards changes made in the settings screen.
 - Result currencies can be reordered by dragging; the order persists across app restarts. Settings show the base currency first, followed by the remaining currencies in main-screen order.
-- Amounts and rates use space-separated thousands grouping and two decimal places in results.
+- Conversion results use two decimal places; exchange rates on the main screen use four decimal places, with positive tiny rates displayed as at least 0.0001.
 
 ## Build from Android phone
 
