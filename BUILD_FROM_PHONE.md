@@ -1,15 +1,13 @@
-# Build and install from an Android phone
+# Build Currency Converter from Termux
 
-From the project root, copy the versioned source ZIP from Downloads, unpack it, commit and push. Then run the reusable build script:
+From the project root on the phone:
 
 ```bash
-cd ~/storage/shared/projects/CurrencyManualChatgpt
-cp ~/storage/shared/Download/CurrencyConverter-v1.0.6-source-with-build-script.zip .
-unzip -o CurrencyConverter-v1.0.6-source-with-build-script.zip -d .
+unzip -o ~/storage/shared/Download/CurrencyConverter-v1.0.11-source-for-git.zip -d .
 git add -A
-git commit -m "Update build-install workflow"
+git commit -m "Currency Converter 1.0.11: settings and reorder"
 git push origin main
 bash scripts/build-install.sh
 ```
 
-The script waits for the GitHub Actions run matching the current commit, checks the workflow result, downloads the versioned release APK, and validates the APK archive. It does not launch Android's package installer because launching the APK from Termux has failed on the target Huawei device. It may open the download folder; install `app-release.apk` manually using ES File Explorer.
+The script waits for the GitHub Actions run matching the pushed commit, checks that tests and the signed release build succeeded, downloads the versioned APK artifact, and verifies the APK archive. Installation remains manual through ES File Explorer because Android's package installer rejected launching the APK from Termux on this Huawei device.

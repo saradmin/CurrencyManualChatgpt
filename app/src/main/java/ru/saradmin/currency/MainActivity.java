@@ -62,6 +62,9 @@ public class MainActivity extends Activity {
     private AlertDialog settingsDialog;
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private TextView statusHint;
+    private boolean settingsEditActive = false;
+    private boolean settingsTemporarilyHidden = false;
+    private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -215,8 +218,14 @@ public class MainActivity extends Activity {
             TextView value = label(amountInput.getText().length() == 0 ? "" : format(result), 19, true);
             value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
             card.addView(value);
-            card.setContentDescription(item.code + ". Long press and drag to reorder.");
-            card.setOnLongClickListener(v -> {
+            // A dedicated visible handle makes the drag gesture discoverable.
+            TextView dragHandle = label("≡", 25, true);
+            dragHandle.setTextColor(MUTED);
+            dragHandle.setGravity(Gravity.CENTER);
+            dragHandle.setContentDescription("Drag to reorder " + item.code);
+            card.addView(dragHandle, new LinearLayout.LayoutParams(dp(30), dp(40)));
+            card.setContentDescription(item.code + ". Use the reorder handle to move this currency.");
+            dragHandle.setOnLongClickListener(v -> {
                 ClipData data = ClipData.newPlainText("currency-code", item.code);
                 View.DragShadowBuilder shadow = new View.DragShadowBuilder(card);
                 if (Build.VERSION.SDK_INT >= 24) card.startDragAndDrop(data, shadow, item.code, 0);
@@ -224,27 +233,37 @@ public class MainActivity extends Activity {
                 return true;
             });
             card.setOnDragListener((target, event) -> {
-                if (event.getAction() == DragEvent.ACTION_DROP) {
-                    String draggedCode = event.getClipData() != null && event.getClipData().getItemCount() > 0
-                            ? event.getClipData().getItemAt(0).getText().toString() : null;
-                    if (draggedCode != null && !draggedCode.equals(item.code)) {
-                        List<String> order = new ArrayList<>();
-                        for (CurrencyItem currency : repository.getCurrencies())
-                            if (!currency.code.equals(repository.getBaseCode())) order.add(currency.code);
-                        int from = order.indexOf(draggedCode);
-                        int to = order.indexOf(item.code);
-                        if (from >= 0 && to >= 0) {
-                            order = ru.saradmin.currency.data.CurrencyOrder.move(order, from, to);
-                            repository.reorderCurrencies(order);
-                            refreshResults();
+                switch (event.getAction()) {
+                    case DragEvent.ACTION_DRAG_STARTED:
+                        return true;
+                    case DragEvent.ACTION_DRAG_ENTERED:
+                        card.setBackground(rounded(0xff394555, GREEN));
+                        return true;
+                    case DragEvent.ACTION_DRAG_EXITED:
+                    case DragEvent.ACTION_DRAG_ENDED:
+                        card.setBackground(rounded(CARD, BORDER));
+                        return true;
+                    case DragEvent.ACTION_DROP:
+                        card.setBackground(rounded(CARD, BORDER));
+                        Object local = event.getLocalState();
+                        String draggedCode = local == null ? null : local.toString();
+                        if (draggedCode == null && event.getClipData() != null && event.getClipData().getItemCount() > 0)
+                            draggedCode = event.getClipData().getItemAt(0).getText().toString();
+                        if (draggedCode != null && !draggedCode.equals(item.code)) {
+                            List<String> order = new ArrayList<>();
+                            for (CurrencyItem currency : repository.getCurrencies())
+                                if (!currency.code.equals(repository.getBaseCode())) order.add(currency.code);
+                            int from = order.indexOf(draggedCode);
+                            int to = order.indexOf(item.code);
+                            if (from >= 0 && to >= 0) {
+                                repository.reorderCurrencies(ru.saradmin.currency.data.CurrencyOrder.move(order, from, to));
+                                refreshResults();
+                            }
                         }
-                    }
-                    return true;
+                        return true;
+                    default:
+                        return true;
                 }
-                return event.getAction() == DragEvent.ACTION_DRAG_STARTED
-                        || event.getAction() == DragEvent.ACTION_DRAG_ENTERED
-                        || event.getAction() == DragEvent.ACTION_DRAG_EXITED
-                        || event.getAction() == DragEvent.ACTION_DRAG_ENDED;
             });
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2); cp.bottomMargin = dp(7); resultsContainer.addView(card, cp);
         }
@@ -290,65 +309,129 @@ public class MainActivity extends Activity {
         LinearLayout item = row();
         item.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-2, -2);
-        itemParams.leftMargin = dp(7);
+        itemParams.rightMargin = dp(14);
         parent.addView(item, itemParams);
-        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(18), dp(18));
         item.addView(sourceBadge(source), badgeParams);
-        TextView text = label(caption, 10, false);
+        TextView text = label(caption, 11, false);
         text.setTextColor(MUTED);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(-2, -2);
-        textParams.leftMargin = dp(3);
+        textParams.leftMargin = dp(5);
         item.addView(text, textParams);
     }
 
     private void showSettings() {
-        ScrollView scroll = new ScrollView(this); LinearLayout body = column(); padding(body, 18, 16, 18, 18); scroll.addView(body);
-        TextView title = label("Currencies & Rates", 22, true); body.addView(title);
-        TextView description = label("Each rate is shown against the current base currency. Changes are saved on this device.", 13, false);
-        description.setTextColor(MUTED); LinearLayout.LayoutParams descP = new LinearLayout.LayoutParams(-1, -2); descP.topMargin = dp(8); body.addView(description, descP);
-        LinearLayout apiInfo = row();
-        apiInfo.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams aip = new LinearLayout.LayoutParams(-1, -2); aip.topMargin = dp(8); body.addView(apiInfo, aip);
-        TextView sourcesLabel = label("Sources:", 11, false); sourcesLabel.setTextColor(MUTED); apiInfo.addView(sourcesLabel);
-        addLegendSource(apiInfo, 1, "Frankfurter");
-        addLegendSource(apiInfo, 2, "ExchangeRate-API");
-        addLegendSource(apiInfo, 0, "Manual / fallback");
-        Button interval = smallButton("Update interval: " + intervalLabel(repository.getIntervalMinutes()), true); LinearLayout.LayoutParams intp=new LinearLayout.LayoutParams(-1,dp(42)); intp.topMargin=dp(10); body.addView(interval,intp);
-        interval.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Update interval").setItems(new String[]{"15 minutes","30 minutes","1 hour","6 hours","12 hours","24 hours"},(d,w)->{long[] vals={15,30,60,360,720,1440};repository.setIntervalMinutes(vals[w]);interval.setText("Update interval: "+intervalLabel(vals[w]));refreshRatesIfNeeded(true);}).show());
-        Button updateNow=smallButton("Update rates now",true); LinearLayout.LayoutParams unp=new LinearLayout.LayoutParams(-1,dp(42));unp.topMargin=dp(6);body.addView(updateNow,unp);updateNow.setOnClickListener(v->refreshRatesIfNeeded(true));
-        for (CurrencyItem item : repository.getCurrencies()) {
-            LinearLayout line = row(); padding(line, 0, 10, 0, 10); line.addView(label(item.flagEmoji, 23, false));
-            TextView name = label(item.code + (item.code.equals(repository.getBaseCode()) ? " · base" : ""), 15, true);
-            LinearLayout.LayoutParams nameP = new LinearLayout.LayoutParams(0, -2, 1); nameP.leftMargin = dp(9); line.addView(name, nameP);
-            if (!item.code.equals(repository.getBaseCode())) {
-                LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(20), dp(20));
-                badgeParams.leftMargin = dp(5);
-                line.addView(sourceBadge(repository.getSource(item.code)), badgeParams);
-            }
-            if (!item.code.equals(repository.getBaseCode())) {
-                TextView prefix = label("1 " + repository.getBaseCode() + " =", 12, false); line.addView(prefix);
-                EditText rate = new EditText(this); rate.setSingleLine(true); rate.setTextSize(15); rate.setEms(5);
-                rate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
-                rate.setHint("rate"); rate.setSelectAllOnFocus(true); rate.setText(repository.getRate(item.code).stripTrailingZeros().toPlainString());
-                line.addView(rate);
-                rate.setOnFocusChangeListener((v, hasFocus) -> { if (!hasFocus) saveRate(item.code, rate.getText().toString()); });
-            }
-            if (!item.code.equals(repository.getBaseCode())) { TextView remove=label("Remove",11,true); remove.setTextColor(0xffE34B55); remove.setPadding(dp(8),0,0,0); line.addView(remove); remove.setOnClickListener(v -> new AlertDialog.Builder(this).setMessage("Remove currency "+item.code+"?").setNegativeButton("Cancel",null).setPositiveButton("Remove",(d,w)->{repository.removeCurrency(item.code);settingsDialog.dismiss();showSettings();refreshResults();}).show()); }
-            body.addView(line); View divider = new View(this); divider.setBackgroundColor(0xffe7ebe8); body.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        settingsTemporarilyHidden = false;
+        settingsRateInputs.clear();
+        if (!settingsEditActive) {
+            repository.beginEdit();
+            settingsEditActive = true;
         }
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout body = column(); padding(body, 18, 16, 18, 18); scroll.addView(body);
+        TextView title = label("Currencies & Rates", 22, true); body.addView(title);
+        TextView description = label("Each rate is shown against the current base currency. Changes are applied when you save.", 13, false);
+        description.setTextColor(MUTED); LinearLayout.LayoutParams descP = new LinearLayout.LayoutParams(-1, -2); descP.topMargin = dp(8); body.addView(description, descP);
+
+        LinearLayout sourceBlock = column();
+        LinearLayout.LayoutParams sourceBlockP = new LinearLayout.LayoutParams(-1, -2); sourceBlockP.topMargin = dp(10); body.addView(sourceBlock, sourceBlockP);
+        TextView sourcesLabel = label("Rate sources", 11, true); sourcesLabel.setTextColor(MUTED); sourceBlock.addView(sourcesLabel);
+        LinearLayout sourceRow = row(); LinearLayout.LayoutParams srp = new LinearLayout.LayoutParams(-1, -2); srp.topMargin = dp(5); sourceBlock.addView(sourceRow, srp);
+        addLegendSource(sourceRow, 1, "Frankfurter");
+        addLegendSource(sourceRow, 2, "ExchangeRate-API");
+        LinearLayout fallbackRow = row(); LinearLayout.LayoutParams frp = new LinearLayout.LayoutParams(-1, -2); frp.topMargin = dp(4); sourceBlock.addView(fallbackRow, frp);
+        addLegendSource(fallbackRow, 0, "Manual / fallback");
+
+        Button interval = smallButton("Update interval: " + intervalLabel(repository.getIntervalMinutes()), true);
+        LinearLayout.LayoutParams intp = new LinearLayout.LayoutParams(-1, dp(42)); intp.topMargin = dp(10); body.addView(interval, intp);
+        interval.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Update interval").setItems(new String[]{"15 minutes","30 minutes","1 hour","6 hours","12 hours","24 hours"},(d,w)->{long[] vals={15,30,60,360,720,1440};repository.setIntervalMinutes(vals[w]);interval.setText("Update interval: "+intervalLabel(vals[w]));}).show());
+        Button updateNow = smallButton("Update rates now", true); LinearLayout.LayoutParams unp = new LinearLayout.LayoutParams(-1, dp(42)); unp.topMargin = dp(6); body.addView(updateNow, unp);
+        updateNow.setOnClickListener(v -> refreshRatesIfNeeded(true));
+
+        for (CurrencyItem item : repository.getCurrencies()) {
+            boolean isBase = item.code.equals(repository.getBaseCode());
+            LinearLayout line = row(); line.setGravity(Gravity.CENTER_VERTICAL); padding(line, 0, 10, 0, 10);
+
+            LinearLayout currency = column(); currency.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams currencyP = new LinearLayout.LayoutParams(dp(54), -2);
+            line.addView(currency, currencyP);
+            TextView flag = label(item.flagEmoji, 22, false); flag.setGravity(Gravity.CENTER); currency.addView(flag);
+            TextView code = label(item.code + (isBase ? " · base" : ""), 10, true); code.setGravity(Gravity.CENTER); code.setTextColor(DARK); currency.addView(code);
+
+            if (!isBase) {
+                LinearLayout.LayoutParams badgeP = new LinearLayout.LayoutParams(dp(20), dp(20)); badgeP.leftMargin = dp(5); badgeP.rightMargin = dp(7);
+                line.addView(sourceBadge(repository.getSource(item.code)), badgeP);
+                LinearLayout rateColumn = column();
+                LinearLayout.LayoutParams rateColumnP = new LinearLayout.LayoutParams(0, -2, 1); rateColumnP.leftMargin = dp(2); line.addView(rateColumn, rateColumnP);
+                TextView prefix = label("1 " + repository.getBaseCode() + " =", 10, false); prefix.setTextColor(MUTED); rateColumn.addView(prefix);
+                EditText rate = new EditText(this); rate.setSingleLine(true); rate.setTextSize(15); rate.setTextColor(DARK); rate.setPadding(0, 0, 0, 0);
+                rate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(MUTED));
+                rate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
+                rate.setHint("Rate"); rate.setSelectAllOnFocus(true); rate.setText(repository.getRate(item.code).stripTrailingZeros().toPlainString());
+                rateColumn.addView(rate, new LinearLayout.LayoutParams(-1, dp(34)));
+                settingsRateInputs.put(item.code, rate);
+                // Keep edits in the in-memory draft while the settings dialog is open.
+                // After Cancel/Save dismisses the dialog, focus loss must never write again.
+                rate.setOnFocusChangeListener((v, hasFocus) -> {
+                    if (!hasFocus && settingsEditActive && settingsDialog != null && settingsDialog.isShowing())
+                        saveRate(item.code, rate.getText().toString(), true);
+                });
+
+                TextView remove = label("×", 27, false); remove.setTextColor(0xffE34B55); remove.setGravity(Gravity.CENTER);
+                GradientDrawable removeBg = new GradientDrawable(); removeBg.setShape(GradientDrawable.OVAL); removeBg.setColor(0x22E34B55); remove.setBackground(removeBg);
+                LinearLayout.LayoutParams removeP = new LinearLayout.LayoutParams(dp(34), dp(34)); removeP.leftMargin = dp(5); line.addView(remove, removeP);
+                remove.setContentDescription("Remove " + item.code);
+                remove.setOnClickListener(v -> new AlertDialog.Builder(this).setMessage("Remove currency " + item.code + "?").setNegativeButton("Cancel", null).setPositiveButton("Remove", (d,w) -> {
+                    repository.removeCurrency(item.code); settingsTemporarilyHidden = true; settingsDialog.dismiss(); showSettings();
+                }).show());
+            }
+            body.addView(line);
+            View divider = new View(this); divider.setBackgroundColor(0xff777777); body.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        }
+
         Button add = smallButton("＋  Add currency", true); LinearLayout.LayoutParams addP = new LinearLayout.LayoutParams(-1, dp(48)); addP.topMargin = dp(14); body.addView(add, addP);
-        add.setEnabled(repository.getCurrencies().size() < repository.getMaxCurrencies()); add.setOnClickListener(v -> { showAddCurrency(); });
+        add.setEnabled(repository.getCurrencies().size() < repository.getMaxCurrencies()); add.setOnClickListener(v -> showAddCurrency());
         TextView count = label("Currencies added: " + repository.getCurrencies().size() + " of " + repository.getMaxCurrencies(), 12, false); count.setTextColor(MUTED); count.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams countP = new LinearLayout.LayoutParams(-1, -2); countP.topMargin = dp(10); body.addView(count, countP);
         TextView version = label("Currency Converter  v" + getAppVersionName() + "  (" + getAppVersionCode() + ")", 11, false);
         version.setTextColor(MUTED); version.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams versionP = new LinearLayout.LayoutParams(-1, -2); versionP.topMargin = dp(18); body.addView(version, versionP);
-        version.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("About")
-                .setMessage("Currency Converter\nVersion: " + getAppVersionName() + "\nBuild number: " + getAppVersionCode() + "\nPackage: " + getPackageName())
-                .setPositiveButton("Close", null).show());
-        settingsDialog = new AlertDialog.Builder(this).setView(scroll).setPositiveButton("Done", (d, w) -> { repository.save(); updateBaseLabel(); refreshResults(); })
-                .setNegativeButton("Close", (d, w) -> { updateBaseLabel(); refreshResults(); }).create();
+        version.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("About").setMessage("Currency Converter\nVersion: " + getAppVersionName() + "\nBuild number: " + getAppVersionCode() + "\nPackage: " + getPackageName()).setPositiveButton("Close", null).show());
+
+        settingsDialog = new AlertDialog.Builder(this).setView(scroll)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", (d,w) -> {
+                    repository.cancelEdit();
+                    settingsEditActive = false;
+                    updateBaseLabel();
+                    refreshResults();
+                })
+                .create();
+        settingsDialog.setOnShowListener(d -> settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            // Read every visible rate field before committing. This avoids losing the
+            // currently focused field and prevents a late focus callback from saving
+            // values after Cancel has already restored the previous snapshot.
+            if (!applySettingsRateInputs()) return;
+            repository.commitEdit();
+            settingsEditActive = false;
+            updateBaseLabel();
+            refreshResults();
+            settingsDialog.dismiss();
+        }));
+        settingsDialog.setOnCancelListener(d -> {
+            repository.cancelEdit();
+            settingsEditActive = false;
+            updateBaseLabel();
+            refreshResults();
+        });
+        settingsDialog.setOnDismissListener(d -> {
+            if (settingsEditActive && !settingsTemporarilyHidden) {
+                repository.cancelEdit();
+                settingsEditActive = false;
+                updateBaseLabel();
+                refreshResults();
+            }
+        });
         settingsDialog.show();
     }
 
@@ -365,13 +448,28 @@ public class MainActivity extends Activity {
         } catch (Exception e) { return 0L; }
     }
 
-    private void saveRate(String code, String text) {
+    private boolean applySettingsRateInputs() {
+        for (Map.Entry<String, EditText> entry : settingsRateInputs.entrySet()) {
+            if (!saveRate(entry.getKey(), entry.getValue().getText().toString(), false)) {
+                entry.getValue().requestFocus();
+                Toast.makeText(this, "Rate must be a number greater than zero", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean saveRate(String code, String text, boolean showError) {
         String normalized = text.trim().replace(',', '.');
         try {
             BigDecimal rate = new BigDecimal(normalized);
             if (rate.signum() <= 0) throw new NumberFormatException();
             repository.setRateFromBase(code, rate);
-        } catch (Exception e) { Toast.makeText(this, "Rate must be a number greater than zero", Toast.LENGTH_SHORT).show(); }
+            return true;
+        } catch (Exception e) {
+            if (showError) Toast.makeText(this, "Rate must be a number greater than zero", Toast.LENGTH_SHORT).show();
+            return false;
+        }
     }
 
     private void showAddCurrency() {
@@ -407,7 +505,7 @@ public class MainActivity extends Activity {
     private void askInitialRate(CurrencyItem item) {
         BigDecimal apiFactor = repository.getCachedApiFactor(item.code);
         if (apiFactor != null) {
-            if (repository.addCurrencyFactor(item.code, apiFactor, repository.getCachedApiSource(item.code))) { downloadFlagOnce(item); Toast.makeText(this,"Currency added using the latest API rate",Toast.LENGTH_SHORT).show(); if(settingsDialog!=null&&settingsDialog.isShowing())settingsDialog.dismiss(); showSettings(); }
+            if (repository.addCurrencyFactor(item.code, apiFactor, repository.getCachedApiSource(item.code))) { downloadFlagOnce(item); Toast.makeText(this,"Currency added using the latest API rate",Toast.LENGTH_SHORT).show(); if(settingsDialog!=null&&settingsDialog.isShowing()) { settingsTemporarilyHidden = true; settingsDialog.dismiss(); } showSettings(); }
             return;
         }
         EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(18);
@@ -420,7 +518,7 @@ public class MainActivity extends Activity {
                         if (!repository.addCurrency(item.code, rate)) throw new NumberFormatException();
                         downloadFlagOnce(item);
                         Toast.makeText(this, "Currency added", Toast.LENGTH_SHORT).show();
-                        if (settingsDialog != null && settingsDialog.isShowing()) settingsDialog.dismiss();
+                        if (settingsDialog != null && settingsDialog.isShowing()) { settingsTemporarilyHidden = true; settingsDialog.dismiss(); }
                         showSettings();
                     } catch (Exception e) { Toast.makeText(this, "Enter a valid rate greater than zero", Toast.LENGTH_LONG).show(); }
                 }).show();

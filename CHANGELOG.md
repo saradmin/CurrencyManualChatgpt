@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.10 (versionCode 11)
+- Made Settings Save/Cancel transactional and reliable.
+- Save explicitly reads every rate field before committing the settings draft.
+- Cancel restores the complete pre-edit snapshot, including rates, currencies and update interval.
+- Prevented delayed EditText focus-loss callbacks from writing values after Save or Cancel closes the dialog.
+
+## 1.0.9
+- Reworked currency settings into transactional Cancel / Save behavior.
+- Improved rate editor layout: compact flag and code column, wider rate input, circular remove control.
+- Reorganized source legend into readable rows with numbered/blue badges.
+
 ## 1.0.8 (build 9)
 - Removed the clear-all key from the numeric keypad. The bottom row now contains only decimal point, zero and backspace, aligned as three equal keys.
 
@@ -40,3 +51,9 @@
 
 ## 1.0.1 (versionCode 2)
 - Added in-app version tracking.
+
+## 1.0.11
+- Made result cards easier to reorder using a dedicated drag handle.
+- Improved drag-and-drop target feedback and local drag-state handling.
+- Currency order continues to persist in the saved repository order.
+- Settings remain transactional: Save commits the current draft; Cancel restores the snapshot from when settings were opened.

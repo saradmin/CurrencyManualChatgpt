@@ -1,9 +1,9 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.0.8  
-**Android versionCode:** 9  
-**Archive:** `CurrencyConverter-v1.0.8-source-for-git.zip`
+**Version:** 1.0.11  
+**Android versionCode:** 11  
+**Archive:** `CurrencyConverter-v1.0.11-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -22,6 +22,7 @@ The version is defined in `app/build.gradle`, recorded in `VERSION.txt`, and dis
 - Source badges: ¹ Frankfurter, ² ExchangeRate-API, blue for manual or fallback data.
 - Add currencies from the local catalog. A cached API rate is used automatically when available; otherwise the app asks for a manual rate. Existing currency rates can be edited in Settings.
 - Remove additional currencies (at least two currencies must remain).
+- Settings are edited as a draft: Save persists rate edits, currency additions/removals and update interval; Cancel discards all changes made since the settings screen was opened.
 - Reorder result currencies by long-pressing a currency card and dragging it; the order is saved across app restarts.
 - Result amounts and displayed rates use exactly two decimal places; empty amounts show no placeholder.
 
@@ -32,7 +33,7 @@ GitHub Actions runs:
 gradle --no-daemon clean testDebugUnitTest assembleRelease
 ```
 
-The signed release APK is uploaded as the `CurrencyConverter-v1.0.8-release-apk` workflow artifact.
+The signed release APK is uploaded as the `CurrencyConverter-v1.0.11-release-apk` workflow artifact.
 
 ## Rate semantics
 Frankfurter uses central-bank reference data and its publication schedule. ExchangeRate-API Open Access updates daily. The app's refresh interval controls local polling, not the publication frequency of either provider. Rates are indicative and may differ from bank/card exchange rates.
@@ -46,4 +47,4 @@ Release APKs are signed with a persistent private keystore supplied through GitH
 
 ## Build and install from Termux
 
-After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script detects the current commit, waits for its GitHub Actions run, checks the result, downloads the versioned artifact from `VERSION.txt`, validates the APK archive, and opens the Android installer.
+After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script detects the current commit, waits for its GitHub Actions run, checks the result, downloads the versioned artifact from `VERSION.txt`, validates the APK archive, and prints the APK path for manual installation with ES File Explorer. Automatic installer launch is disabled for this Huawei device.

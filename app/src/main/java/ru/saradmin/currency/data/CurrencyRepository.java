@@ -15,13 +15,42 @@ import java.util.Map;
 public final class CurrencyRepository {
     private static final String PREFS="currency_manual_v3"; private static final int MAX_CURRENCIES=6;
     private final SharedPreferences prefs; private final LinkedHashMap<String,BigDecimal> factors=new LinkedHashMap<>(); private final LinkedHashMap<String,Integer> sources=new LinkedHashMap<>(); private final LinkedHashMap<String,BigDecimal> apiCache=new LinkedHashMap<>(); private final LinkedHashMap<String,Integer> apiSources=new LinkedHashMap<>();
-    private String baseCode; private long lastUpdate; private long intervalMinutes=15; private boolean staleFallback;
+    private String baseCode; private long lastUpdate; private long intervalMinutes=15; private boolean staleFallback; private Snapshot editSnapshot;
     public CurrencyRepository(Context context){prefs=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE);load();}
     private void load(){String raw=prefs.getString("currencies",null); if(raw!=null)try{JSONArray a=new JSONArray(raw);for(int i=0;i<a.length();i++){JSONObject o=a.getJSONObject(i);String c=o.getString("code");BigDecimal f=new BigDecimal(o.getString("factor"));if(CurrencyCatalog.find(c)!=null&&f.signum()>0){factors.put(c,f);sources.put(c,o.optInt("source",0));}}baseCode=prefs.getString("base",null);}catch(Exception e){factors.clear();sources.clear();}
         if(factors.isEmpty()){factors.put("USD",BigDecimal.ONE);factors.put("EUR",new BigDecimal("0.925"));factors.put("KZT",new BigDecimal("492"));factors.put("RUB",new BigDecimal("91.5"));for(String c:factors.keySet())sources.put(c,-1);baseCode="USD";}
         if(!factors.containsKey(baseCode))baseCode=factors.keySet().iterator().next();lastUpdate=prefs.getLong("lastUpdate",0);intervalMinutes=prefs.getLong("interval",15);
         try { JSONObject cache=new JSONObject(prefs.getString("apiCache","{}")); java.util.Iterator<String> keys=cache.keys(); while(keys.hasNext()){String c=keys.next();JSONObject v=cache.getJSONObject(c);BigDecimal f=new BigDecimal(v.getString("factor"));if(f.signum()>0){apiCache.put(c,f);apiSources.put(c,v.optInt("source",0));}} } catch(Exception ignored) { }}
-    public synchronized void save(){try{JSONArray a=new JSONArray();for(Map.Entry<String,BigDecimal> e:factors.entrySet()){JSONObject o=new JSONObject();o.put("code",e.getKey());o.put("factor",e.getValue().toPlainString());o.put("source",sources.containsKey(e.getKey())?sources.get(e.getKey()):0);a.put(o);}JSONObject cache=new JSONObject(); for(Map.Entry<String,BigDecimal> e:apiCache.entrySet()){JSONObject v=new JSONObject();v.put("factor",e.getValue().toPlainString());v.put("source",apiSources.get(e.getKey()));cache.put(e.getKey(),v);}
+    private static final class Snapshot {
+        final LinkedHashMap<String,BigDecimal> factors;
+        final LinkedHashMap<String,Integer> sources;
+        final LinkedHashMap<String,BigDecimal> apiCache;
+        final LinkedHashMap<String,Integer> apiSources;
+        final String baseCode;
+        final long lastUpdate, intervalMinutes;
+        final boolean staleFallback;
+        Snapshot(CurrencyRepository r) {
+            factors = new LinkedHashMap<>(r.factors);
+            sources = new LinkedHashMap<>(r.sources);
+            apiCache = new LinkedHashMap<>(r.apiCache);
+            apiSources = new LinkedHashMap<>(r.apiSources);
+            baseCode = r.baseCode; lastUpdate = r.lastUpdate;
+            intervalMinutes = r.intervalMinutes; staleFallback = r.staleFallback;
+        }
+    }
+    public synchronized void beginEdit() { if (editSnapshot == null) editSnapshot = new Snapshot(this); }
+    public synchronized void commitEdit() { if (editSnapshot != null) { editSnapshot = null; save(); } }
+    public synchronized void cancelEdit() {
+        if (editSnapshot == null) return;
+        factors.clear(); factors.putAll(editSnapshot.factors);
+        sources.clear(); sources.putAll(editSnapshot.sources);
+        apiCache.clear(); apiCache.putAll(editSnapshot.apiCache);
+        apiSources.clear(); apiSources.putAll(editSnapshot.apiSources);
+        baseCode = editSnapshot.baseCode; lastUpdate = editSnapshot.lastUpdate;
+        intervalMinutes = editSnapshot.intervalMinutes; staleFallback = editSnapshot.staleFallback;
+        editSnapshot = null;
+    }
+    public synchronized void save(){if(editSnapshot != null) return; try{JSONArray a=new JSONArray();for(Map.Entry<String,BigDecimal> e:factors.entrySet()){JSONObject o=new JSONObject();o.put("code",e.getKey());o.put("factor",e.getValue().toPlainString());o.put("source",sources.containsKey(e.getKey())?sources.get(e.getKey()):0);a.put(o);}JSONObject cache=new JSONObject(); for(Map.Entry<String,BigDecimal> e:apiCache.entrySet()){JSONObject v=new JSONObject();v.put("factor",e.getValue().toPlainString());v.put("source",apiSources.get(e.getKey()));cache.put(e.getKey(),v);}
             prefs.edit().putString("currencies",a.toString()).putString("base",baseCode).putLong("lastUpdate",lastUpdate).putLong("interval",intervalMinutes).putString("apiCache",cache.toString()).apply();}catch(Exception ignored){}}
     public synchronized List<CurrencyItem> getCurrencies(){List<CurrencyItem> r=new ArrayList<>();for(String c:factors.keySet())r.add(CurrencyCatalog.find(c));return r;}
     public synchronized String getBaseCode(){return baseCode;} public synchronized void setBaseCode(String c){if(!factors.containsKey(c))throw new IllegalArgumentException();baseCode=c;save();}
