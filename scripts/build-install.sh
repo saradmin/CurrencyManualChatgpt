@@ -25,6 +25,8 @@ CURRENT_BRANCH="$(git branch --show-current)"
 APP_NAME="$(sed -n 's/^App name: *//p' "$VERSION_FILE" | head -n 1)"
 VERSION="$(sed -n 's/^Version: *//p' "$VERSION_FILE" | head -n 1)"
 [ -n "$APP_NAME" ] && [ -n "$VERSION" ] || fail "Could not read app name/version from VERSION.txt."
+grep -Fq "**Version:** ${VERSION}" "$PROJECT_ROOT/README.md" || fail "README version does not match VERSION.txt."
+grep -Fq "CurrencyConverter-v${VERSION}-source-for-git.zip" "$PROJECT_ROOT/README.md" || fail "README source archive name does not match VERSION.txt."
 ARTIFACT="CurrencyConverter-v${VERSION}-release-apk"
 
 printf 'Currency Converter %s\n' "$VERSION"

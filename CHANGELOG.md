@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.25
+- Fixed settings Save handling: rate values and Keep this rate checkboxes are now applied together as one transaction. Checkbox changes are staged in the settings draft instead of being persisted immediately; Cancel rolls them back and Save commits them.
+- Removed rate-field focus-loss writes, avoiding race conditions between editing, checkbox changes and Save.
+- Update rates now refreshes the main-screen results and last-successful-update timestamp immediately after a successful API response.
+- Updated README version and feature documentation; GitHub Actions now verifies that README and VERSION.txt agree.
+- Kept source ZIPs and APKs out of Git and retained cleanup of old accidentally committed source archives and the stray cc/ directory.
+
 ## 1.0.24
 - Removed periodic rate-update intervals. Rates now refresh automatically once when the app is opened, and can also be refreshed manually with Update rates now.
 - Update rates now fetches the complete provider rate set and updates every unpinned currency pair; pinned pair overrides remain unchanged.

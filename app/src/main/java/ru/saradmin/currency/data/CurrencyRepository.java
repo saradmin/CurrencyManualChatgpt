@@ -22,20 +22,27 @@ public final class CurrencyRepository {
         if(!factors.containsKey(baseCode))baseCode=factors.keySet().iterator().next();lastUpdate=prefs.getLong("lastUpdate",0);
         try { JSONObject cache=new JSONObject(prefs.getString("apiCache","{}")); java.util.Iterator<String> keys=cache.keys(); while(keys.hasNext()){String c=keys.next();JSONObject v=cache.getJSONObject(c);BigDecimal f=new BigDecimal(v.getString("factor"));if(f.signum()>0){apiCache.put(c,f);apiSources.put(c,v.optInt("source",0));}} } catch(Exception ignored) { }
         try { JSONArray pairs = new JSONArray(prefs.getString("pairRates", "[]")); for (int i=0;i<pairs.length();i++) { JSONObject o=pairs.getJSONObject(i); String key=pairKey(o.getString("base"),o.getString("target")); pairRates.put(key,new BigDecimal(o.getString("rate"))); pairSources.put(key,o.optInt("source",0)); pairPinned.put(key,o.optBoolean("pinned",false)); } } catch(Exception ignored) { }
-        // One-time migration from releases that stored a manual quote by changing
-        // the target's global factor. Preserve the currently visible manual quote
-        // as a pair override; future edits will no longer affect unrelated pairs.
-        if (pairRates.isEmpty() && baseCode != null) {
+        // Migrate legacy per-currency manual/pinned values to explicit pair
+        // overrides. Do this even when some pair overrides already exist, otherwise
+        // a second legacy pin could be lost. Pair pin state is authoritative after
+        // migration; the old per-currency flag is no longer used by the UI.
+        if (baseCode != null) {
+            boolean migrated = false;
             for (String c : factors.keySet()) {
-                if (!c.equals(baseCode) && sources.containsKey(c) && sources.get(c) == 0) {
+                if (c.equals(baseCode)) continue;
+                String key = pairKey(baseCode, c);
+                String reverse = pairKey(c, baseCode);
+                boolean legacyManual = sources.containsKey(c) && sources.get(c) == 0;
+                boolean legacyPinned = pinned.containsKey(c) && pinned.get(c);
+                if ((legacyManual || legacyPinned) && !pairRates.containsKey(key) && !pairRates.containsKey(reverse)) {
                     BigDecimal legacyRate = ru.saradmin.currency.core.ConversionEngine.rate(factors.get(baseCode), factors.get(c));
-                    String key = pairKey(baseCode, c);
                     pairRates.put(key, legacyRate);
-                    pairSources.put(key, 0);
-                    pairPinned.put(key, pinned.containsKey(c) && pinned.get(c));
+                    pairSources.put(key, legacyManual ? 0 : (sources.containsKey(c) ? sources.get(c) : 0));
+                    pairPinned.put(key, legacyPinned);
+                    migrated = true;
                 }
             }
-            if (!pairRates.isEmpty()) save();
+            if (migrated) save();
         }
     }
     private static final class Snapshot {
@@ -110,7 +117,7 @@ public final class CurrencyRepository {
         int targetSource = sources.containsKey(c) ? sources.get(c) : 0;
         return RateSourceResolver.resolve(baseCode, c, baseSource, targetSource, null);
     }
-    public synchronized boolean isPinned(String c){String key=matchingPairKey(baseCode,c);return key!=null?(pairPinned.containsKey(key)&&pairPinned.get(key)):(pinned.containsKey(c)&&pinned.get(c));}
+    public synchronized boolean isPinned(String c){String key=matchingPairKey(baseCode,c);return key!=null&&pairPinned.containsKey(key)&&pairPinned.get(key); }
     public synchronized void setPinned(String c,boolean value){
         if(!factors.containsKey(c)||c.equals(baseCode))return;
         String key=matchingPairKey(baseCode,c);
@@ -158,7 +165,11 @@ public final class CurrencyRepository {
         }
         for (String c : factors.keySet()) {
             RateProvider.Rate r = rates.get(c);
-            if (r != null && !(pinned.containsKey(c) && pinned.get(c))) {
+            if (r != null) {
+                // API values are the shared fallback factors. Pair-specific pinned
+                // overrides are stored separately and remain untouched below.
+                // A legacy per-currency pin must not block refresh after the user
+                // has explicitly unpinned the currently edited pair.
                 factors.put(c, r.value);
                 sources.put(c, r.source);
             }
@@ -177,8 +188,7 @@ public final class CurrencyRepository {
                 RateProvider.Rate r = e.getValue();
                 editSnapshot.apiCache.put(c, r.value);
                 editSnapshot.apiSources.put(c, r.source);
-                if (editSnapshot.factors.containsKey(c)
-                        && !(editSnapshot.pinned.containsKey(c) && editSnapshot.pinned.get(c))) {
+                if (editSnapshot.factors.containsKey(c)) {
                     editSnapshot.factors.put(c, r.value);
                     editSnapshot.sources.put(c, r.source);
                 }

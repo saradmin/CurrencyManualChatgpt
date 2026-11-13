@@ -69,6 +69,7 @@ public class MainActivity extends Activity {
     private boolean settingsTemporarilyHidden = false;
     private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
     private final java.util.LinkedHashMap<String, String> settingsOriginalRates = new java.util.LinkedHashMap<>();
+    private final java.util.LinkedHashMap<String, CheckBox> settingsPinInputs = new java.util.LinkedHashMap<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -361,6 +362,7 @@ public class MainActivity extends Activity {
         settingsTemporarilyHidden = false;
         settingsRateInputs.clear();
         settingsOriginalRates.clear();
+        settingsPinInputs.clear();
         if (!settingsEditActive) {
             repository.beginEdit();
             settingsEditActive = true;
@@ -388,6 +390,7 @@ public class MainActivity extends Activity {
             if (rateRefreshInProgress) return;
             // Keep edits already entered in the open settings draft before refreshing.
             if (!applySettingsRateInputs()) return;
+            applySettingsPinInputs();
             rateRefreshInProgress = true;
             updateNow.setEnabled(false);
             updateNow.setText("Updating rates…");
@@ -398,8 +401,12 @@ public class MainActivity extends Activity {
                     if (isFinishing() || isDestroyed()) return;
                     if (result.anyApiSucceeded && !result.rates.isEmpty()) {
                         repository.applyApiRates(result.rates);
+                        updateStatus(true);
+                        refreshResults();
                         Toast.makeText(this, "Rates updated", Toast.LENGTH_SHORT).show();
                     } else {
+                        repository.markRefreshFailed();
+                        updateStatus(false);
                         Toast.makeText(this, "Rate update failed. Check your internet connection.", Toast.LENGTH_LONG).show();
                     }
                     // Rebuild the settings view so the new values and source badges are visible.
@@ -444,14 +451,10 @@ public class MainActivity extends Activity {
                 keepRate.setPadding(0, 0, 0, 0);
                 keepRate.setChecked(repository.isPinned(item.code));
                 rateColumn.addView(keepRate, new LinearLayout.LayoutParams(-1, dp(28)));
-                keepRate.setOnCheckedChangeListener((button, checked) -> repository.setPinned(item.code, checked));
+                // Keep the checkbox as part of the same Save/Cancel draft as the rate.
+                // Do not persist it immediately from the widget listener.
+                settingsPinInputs.put(item.code, keepRate);
                 settingsRateInputs.put(item.code, rate);
-                // Keep edits in the in-memory draft while the settings dialog is open.
-                // After Cancel/Save dismisses the dialog, focus loss must never write again.
-                rate.setOnFocusChangeListener((v, hasFocus) -> {
-                    if (!hasFocus && settingsEditActive && settingsDialog != null && settingsDialog.isShowing())
-                        saveRate(item.code, rate.getText().toString(), true);
-                });
 
                 TextView remove = label("×", 27, false); remove.setTextColor(0xffE34B55); remove.setGravity(Gravity.CENTER);
                 GradientDrawable removeBg = new GradientDrawable(); removeBg.setShape(GradientDrawable.OVAL); removeBg.setColor(0x22E34B55); remove.setBackground(removeBg);
@@ -484,10 +487,10 @@ public class MainActivity extends Activity {
                 })
                 .create();
         settingsDialog.setOnShowListener(d -> settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            // Read every visible rate field before committing. This avoids losing the
-            // currently focused field and prevents a late focus callback from saving
-            // values after Cancel has already restored the previous snapshot.
+            // Commit rate fields and Keep checkboxes together from the visible draft.
+            // No widget writes directly to persistent storage while this dialog is open.
             if (!applySettingsRateInputs()) return;
+            applySettingsPinInputs();
             repository.commitEdit();
             settingsEditActive = false;
             updateBaseLabel();
@@ -526,6 +529,12 @@ public class MainActivity extends Activity {
             }
         }
         return true;
+    }
+
+    private void applySettingsPinInputs() {
+        for (Map.Entry<String, CheckBox> entry : settingsPinInputs.entrySet()) {
+            repository.setPinned(entry.getKey(), entry.getValue().isChecked());
+        }
     }
 
     private String normalizeRateText(String text) {
