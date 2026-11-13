@@ -1,9 +1,8 @@
-name: Build CurrencyManual APK
+name: Build Android APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -11,10 +10,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -23,29 +21,31 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: platform-tools
 
-      - name: Install Android SDK platform
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Android SDK components
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Extract project
-        run: unzip -o CurrencyManual-source.zip
+      - name: Verify toolchain
+        run: |
+          java -version
+          gradle --version
+          sdkmanager --list_installed
 
-      - name: Build debug APK
-        run: gradle -p CurrencyManual --no-daemon assembleDebug
+      - name: Run unit tests and build APK
+        run: gradle --no-daemon clean testDebugUnitTest assembleDebug
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: CurrencyManual-APK
-          path: CurrencyManual/app/build/outputs/apk/debug/app-debug.apk
+          name: CurrencyManual-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
