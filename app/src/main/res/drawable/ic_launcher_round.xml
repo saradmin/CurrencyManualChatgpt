@@ -4,18 +4,30 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path android:fillColor="#202329" android:pathData="M0,0h108v108h-108z" />
-    <!-- Blue C in the upper-left -->
+
+    <!-- Blue currency C: bold geometric letterform with double currency cuts. -->
     <path android:fillColor="@android:color/transparent"
         android:strokeColor="#2589E8"
-        android:strokeWidth="8"
+        android:strokeWidth="9.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M52,20 C42,14 29,16 22,25 C12,37 16,55 27,63 C34,68 44,68 51,63" />
-    <!-- Red C diagonally below and to the right -->
+        android:pathData="M51,20 C42,15 29,17 22,26 C12,38 16,56 27,64 C34,69 44,69 51,64" />
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#2589E8"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M39,37 L56,37 M38,48 L55,48" />
+
+    <!-- Red currency C, diagonally offset down and right. -->
     <path android:fillColor="@android:color/transparent"
         android:strokeColor="#E34B55"
-        android:strokeWidth="8"
+        android:strokeWidth="9.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M86,46 C76,40 63,42 56,51 C46,63 50,81 61,89 C68,94 78,94 85,89" />
+        android:pathData="M85,46 C76,41 63,43 56,52 C46,64 50,82 61,90 C68,95 78,95 85,90" />
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#E34B55"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M73,63 L90,63 M72,74 L89,74" />
 </vector>

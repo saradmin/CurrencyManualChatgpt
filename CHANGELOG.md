@@ -99,3 +99,4 @@
 - Improved drag-and-drop target feedback and local drag-state handling.
 - Currency order continues to persist in the saved repository order.
 - Settings remain transactional: Save commits the current draft; Cancel restores the snapshot from when settings were opened.
+\n## 1.0.20\n- Keep freshly downloaded API rates when the settings dialog is cancelled; Cancel now rolls back only pending manual/settings edits.\n- Refine the launcher mark with bolder currency-inspired C letterforms and double currency cuts.\n

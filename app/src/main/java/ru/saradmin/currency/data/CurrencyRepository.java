@@ -28,7 +28,7 @@ public final class CurrencyRepository {
         final LinkedHashMap<String,Integer> apiSources;
         final LinkedHashMap<String,Boolean> pinned;
         final String baseCode;
-        final long lastUpdate, intervalMinutes;
+        long lastUpdate; final long intervalMinutes;
         final boolean staleFallback;
         Snapshot(CurrencyRepository r) {
             factors = new LinkedHashMap<>(r.factors);
@@ -62,7 +62,68 @@ public final class CurrencyRepository {
     public synchronized boolean shouldRefresh(){return lastUpdate==0||System.currentTimeMillis()-lastUpdate>=intervalMinutes*60000L;}
     public synchronized void markFallback(){} public synchronized void markRefreshFailed(){}
     public synchronized BigDecimal getCachedApiFactor(String c){return apiCache.get(c);} public synchronized int getCachedApiSource(String c){return apiSources.containsKey(c)?apiSources.get(c):0;}
-    public synchronized void applyApiRates(Map<String,RateProvider.Rate> rates){for(Map.Entry<String,RateProvider.Rate> e:rates.entrySet()){apiCache.put(e.getKey(),e.getValue().value);apiSources.put(e.getKey(),e.getValue().source);} for(String c:factors.keySet()){RateProvider.Rate r=rates.get(c);if(r!=null && !isPinned(c)){factors.put(c,r.value);sources.put(c,r.source);}}lastUpdate=System.currentTimeMillis();staleFallback=false;save();}
+    private void persistSnapshotState(Snapshot s) {
+        try {
+            JSONArray a = new JSONArray();
+            for (Map.Entry<String,BigDecimal> e : s.factors.entrySet()) {
+                JSONObject o = new JSONObject();
+                o.put("code", e.getKey());
+                o.put("factor", e.getValue().toPlainString());
+                o.put("source", s.sources.containsKey(e.getKey()) ? s.sources.get(e.getKey()) : 0);
+                o.put("pinned", s.pinned.containsKey(e.getKey()) && s.pinned.get(e.getKey()));
+                a.put(o);
+            }
+            JSONObject cache = new JSONObject();
+            for (Map.Entry<String,BigDecimal> e : s.apiCache.entrySet()) {
+                JSONObject v = new JSONObject();
+                v.put("factor", e.getValue().toPlainString());
+                v.put("source", s.apiSources.containsKey(e.getKey()) ? s.apiSources.get(e.getKey()) : 0);
+                cache.put(e.getKey(), v);
+            }
+            prefs.edit().putString("currencies", a.toString())
+                    .putString("base", s.baseCode)
+                    .putLong("lastUpdate", s.lastUpdate)
+                    .putLong("interval", s.intervalMinutes)
+                    .putString("apiCache", cache.toString()).apply();
+        } catch (Exception ignored) { }
+    }
+
+    public synchronized void applyApiRates(Map<String,RateProvider.Rate> rates) {
+        long updatedAt = System.currentTimeMillis();
+        for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
+            apiCache.put(e.getKey(), e.getValue().value);
+            apiSources.put(e.getKey(), e.getValue().source);
+        }
+        for (String c : factors.keySet()) {
+            RateProvider.Rate r = rates.get(c);
+            if (r != null && !isPinned(c)) {
+                factors.put(c, r.value);
+                sources.put(c, r.source);
+            }
+        }
+        lastUpdate = updatedAt;
+        staleFallback = false;
+
+        // A network refresh is independent of the settings dialog's Save/Cancel
+        // transaction. Update its rollback baseline too, so Cancel can discard
+        // manual edits without reverting freshly downloaded API rates.
+        if (editSnapshot != null) {
+            for (Map.Entry<String,RateProvider.Rate> e : rates.entrySet()) {
+                String c = e.getKey();
+                RateProvider.Rate r = e.getValue();
+                editSnapshot.apiCache.put(c, r.value);
+                editSnapshot.apiSources.put(c, r.source);
+                if (editSnapshot.factors.containsKey(c)
+                        && !(editSnapshot.pinned.containsKey(c) && editSnapshot.pinned.get(c))) {
+                    editSnapshot.factors.put(c, r.value);
+                    editSnapshot.sources.put(c, r.source);
+                }
+            }
+            editSnapshot.lastUpdate = updatedAt;
+            persistSnapshotState(editSnapshot);
+        }
+        save();
+    }
     public synchronized void setRateFromBase(String target,BigDecimal rate){if(!factors.containsKey(target)||target.equals(baseCode)||rate==null||rate.signum()<=0)throw new IllegalArgumentException();BigDecimal current=getRate(target);if(current.compareTo(rate)!=0){factors.put(target,ru.saradmin.currency.core.ConversionEngine.factorFromRate(factors.get(baseCode),rate));sources.put(target,0);}save();}
     public synchronized boolean addCurrency(String code,BigDecimal rate){if(rate==null||rate.signum()<=0)return false;return addCurrencyFactor(code,ru.saradmin.currency.core.ConversionEngine.factorFromRate(factors.get(baseCode),rate),0);}
     public synchronized boolean addCurrencyFactor(String code,BigDecimal factor,int source){if(factors.size()>=MAX_CURRENCIES||factors.containsKey(code)||CurrencyCatalog.find(code)==null||factor==null||factor.signum()<=0)return false;factors.put(code,factor);sources.put(code,source);pinned.put(code,false);save();return true;}
