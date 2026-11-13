@@ -1,9 +1,9 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.0.11  
-**Android versionCode:** 11  
-**Archive:** `CurrencyConverter-v1.0.11-source-for-git.zip`
+**Version:** 1.0.13  
+**Android versionCode:** 14  
+**Archive:** `CurrencyConverter-v1.0.13-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -33,7 +33,7 @@ GitHub Actions runs:
 gradle --no-daemon clean testDebugUnitTest assembleRelease
 ```
 
-The signed release APK is uploaded as the `CurrencyConverter-v1.0.11-release-apk` workflow artifact.
+The signed release APK is uploaded as the `CurrencyConverter-v1.0.13-release-apk` workflow artifact.
 
 ## Rate semantics
 Frankfurter uses central-bank reference data and its publication schedule. ExchangeRate-API Open Access updates daily. The app's refresh interval controls local polling, not the publication frequency of either provider. Rates are indicative and may differ from bank/card exchange rates.

@@ -1,3 +1,10 @@
+## 1.0.13
+- Fixed responsive layout for very large amounts and conversion results. Currency codes and rate labels stay on one line; result values shrink to fit their cards instead of forcing neighboring content to wrap or overflow.
+
+## 1.0.12
+- Added space-separated thousands grouping throughout displayed amounts and rates.
+- Amount keypad and rate editor accept grouped values without breaking numeric parsing.
+
 # Changelog
 
 ## 1.0.10 (versionCode 11)

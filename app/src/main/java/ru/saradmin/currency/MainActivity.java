@@ -133,9 +133,13 @@ public class MainActivity extends Activity {
         root.addView(buildNumericKeyboard(), new LinearLayout.LayoutParams(-1, dp(162)));
         amountInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { refreshResults(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                fitTextToWidth(amountInput, 30, 17);
+                refreshResults();
+            }
             @Override public void afterTextChanged(Editable s) { }
         });
+        amountInput.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitTextToWidth(amountInput, 30, 17));
         updateBaseLabel(); refreshResults();
         amountInput.requestFocus();
     }
@@ -174,7 +178,7 @@ public class MainActivity extends Activity {
         b.setTextColor(DARK); b.setBackground(rounded(0xff363d48, BORDER)); return b;
     }
     private void onKey(String key) {
-        String current = amountInput.getText().toString();
+        String current = amountInput.getText().toString().replace(" ", "");
         if ("⌫".equals(key)) {
             if (!current.isEmpty()) current = current.substring(0, current.length() - 1);
         } else if (".".equals(key) || ",".equals(key)) {
@@ -184,11 +188,12 @@ public class MainActivity extends Activity {
             if (current.length() >= 15) return;
             current += key;
         }
+        current = CurrencyDisplayFormat.formatInput(current);
         amountInput.setText(current); amountInput.setSelection(current.length()); amountInput.requestFocus();
     }
 
     private BigDecimal parseAmount() {
-        String value = amountInput == null ? "" : amountInput.getText().toString().trim().replace(',', '.');
+        String value = amountInput == null ? "" : amountInput.getText().toString().trim().replace(" ", "").replace(',', '.');
         if (value.isEmpty() || ".".equals(value)) return BigDecimal.ZERO;
         try { return new BigDecimal(value); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
     }
@@ -206,18 +211,32 @@ public class MainActivity extends Activity {
             View flag = flagView(item); card.addView(flag, new LinearLayout.LayoutParams(dp(38), dp(28)));
             LinearLayout details = column();
             LinearLayout codeRow = row();
-            TextView code = label(item.code, 16, true); codeRow.addView(code);
-            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(20), dp(20));
-            badgeParams.leftMargin = dp(9);
+            TextView code = label(item.code, 15, true);
+            code.setSingleLine(true);
+            codeRow.addView(code);
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(19), dp(19));
+            badgeParams.leftMargin = dp(5);
             codeRow.addView(sourceBadge(repository.getSource(item.code)), badgeParams);
             details.addView(codeRow);
             BigDecimal rate = repository.getRate(item.code);
-            TextView rateText = label("1 " + base + " = " + format(rate) + " " + item.code, 10, false); rateText.setTextColor(MUTED); details.addView(rateText);
-            LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(0, -2, 1); dp.leftMargin = dp(10); card.addView(details, dp);
+            TextView rateText = label("1 " + base + " = " + format(rate), 9, false);
+            rateText.setTextColor(MUTED);
+            rateText.setSingleLine(true);
+            rateText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            details.addView(rateText);
+            LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(dp(76), -2);
+            detailsParams.leftMargin = dp(8);
+            card.addView(details, detailsParams);
             BigDecimal result = ConversionEngine.convert(amount, repository.getFactor(base), repository.getFactor(item.code));
             TextView value = label(amountInput.getText().length() == 0 ? "" : format(result), 19, true);
+            value.setSingleLine(true);
             value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-            card.addView(value);
+            value.setIncludeFontPadding(false);
+            LinearLayout.LayoutParams valueParams = new LinearLayout.LayoutParams(0, -1, 1);
+            valueParams.leftMargin = dp(3);
+            card.addView(value, valueParams);
+            value.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitTextToWidth(value, 19, 10));
+            value.post(() -> fitTextToWidth(value, 19, 10));
             // A dedicated visible handle makes the drag gesture discoverable.
             TextView dragHandle = label("≡", 25, true);
             dragHandle.setTextColor(MUTED);
@@ -267,6 +286,20 @@ public class MainActivity extends Activity {
             });
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2); cp.bottomMargin = dp(7); resultsContainer.addView(card, cp);
         }
+    }
+
+    /** Shrinks a single-line number to the available width instead of pushing sibling views out of the card. */
+    private void fitTextToWidth(TextView view, float maxSp, float minSp) {
+        if (view == null || view.getWidth() <= 0) return;
+        float available = view.getWidth() - view.getPaddingLeft() - view.getPaddingRight();
+        float size = maxSp;
+        view.setTextSize(size);
+        while (size > minSp && view.getPaint().measureText(view.getText().toString()) > available) {
+            size -= 0.5f;
+            view.setTextSize(size);
+        }
+        view.setEllipsize(view.getPaint().measureText(view.getText().toString()) > available
+                ? android.text.TextUtils.TruncateAt.END : null);
     }
 
     private TextView sourceBadge(int source) {
@@ -367,7 +400,7 @@ public class MainActivity extends Activity {
                 EditText rate = new EditText(this); rate.setSingleLine(true); rate.setTextSize(15); rate.setTextColor(DARK); rate.setPadding(0, 0, 0, 0);
                 rate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(MUTED));
                 rate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
-                rate.setHint("Rate"); rate.setSelectAllOnFocus(true); rate.setText(repository.getRate(item.code).stripTrailingZeros().toPlainString());
+                rate.setHint("Rate"); rate.setSelectAllOnFocus(true); rate.setText(CurrencyDisplayFormat.formatEditable(repository.getRate(item.code)));
                 rateColumn.addView(rate, new LinearLayout.LayoutParams(-1, dp(34)));
                 settingsRateInputs.put(item.code, rate);
                 // Keep edits in the in-memory draft while the settings dialog is open.
@@ -460,7 +493,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean saveRate(String code, String text, boolean showError) {
-        String normalized = text.trim().replace(',', '.');
+        String normalized = text.trim().replace(" ", "").replace(',', '.');
         try {
             BigDecimal rate = new BigDecimal(normalized);
             if (rate.signum() <= 0) throw new NumberFormatException();

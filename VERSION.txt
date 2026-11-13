@@ -1,6 +1,6 @@
 App name: Currency Converter
-Version: 1.0.11
-Version code: 12
+Version: 1.0.13
+Version code: 14
 Package: ru.saradmin.currency
-Release artifact: CurrencyConverter-v1.0.11-release-apk
+Release artifact: CurrencyConverter-v1.0.13-release-apk
 Signing: persistent private keystore supplied through GitHub Actions Secrets
