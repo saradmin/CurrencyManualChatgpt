@@ -1,10 +1,23 @@
-# Сборка APK только с телефона
+# Обновление проекта и сборка APK с телефона
 
-1. Откройте репозиторий `saradmin/CurrencyManualChatgpt` в мобильном браузере.
-2. Загрузите содержимое этого архива в корень репозитория. В корне GitHub должны сразу находиться `app`, `.github`, `build.gradle`, `settings.gradle`, `gradle.properties`, `README.md` и этот файл. Не загружайте сам ZIP как единственный файл.
-3. Если GitHub спросит, заменять ли существующие файлы, замените файлы проекта и workflow. Старую вложенную папку `CurrencyManual/` после переноса не используйте.
-4. Откройте вкладку **Actions**. Выберите **Build Android APK** и нажмите **Run workflow**. Либо сборка автоматически стартует после commit в `main`.
-5. Дождитесь зелёного статуса. Откройте завершённый запуск, прокрутите вниз до **Artifacts** и скачайте `CurrencyManual-debug-apk`.
-6. Распакуйте скачанный архив на телефоне и установите `app-debug.apk`. При необходимости разрешите установку приложений из браузера/файлового менеджера.
+Архив содержит готовое дерево исходников. Распаковывайте его **поверх существующего репозитория**, не удаляя скрытую папку `.git`.
 
-Если сборка завершится ошибкой, пришлите полный лог упавшего шага. Не запускайте несколько повторных сборок до анализа первой ошибки.
+В Termux:
+
+```bash
+cd ~/storage/shared/projects/CurrencyManualChatgpt
+unzip -o ~/storage/shared/Download/CurrencyManual-source-for-git.zip -d .
+git status --short
+git add -A
+git commit -m "Implement API rates, fallback and keypad fixes"
+git push origin main
+```
+
+После `git push` откройте GitHub → репозиторий `saradmin/CurrencyManualChatgpt` → **Actions** → запуск `Build Android APK`. Workflow запускает unit-тесты и Android-сборку. Дождитесь зелёного статуса, откройте запуск и скачайте Artifact `CurrencyManual-debug-apk`. Распакуйте его и установите `app-debug.apk`.
+
+Если workflow завершится ошибкой, не делайте повторные push вслепую. Пришлите лог упавшего шага, сначала найдём первопричину.
+
+
+## Archive version
+
+This archive is CurrencyManual 1.0.1 (Android versionCode 2). After pushing, check that the GitHub Actions artifact was produced from this commit. The installed app version is visible in Settings at the bottom; tap it for package and build details.

@@ -1,0 +1,4 @@
+CurrencyManual
+Version: 1.0.1
+Version code: 2
+Archive: CurrencyManual-v1.0.1-source-for-git.zip

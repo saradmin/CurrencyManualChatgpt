@@ -1,45 +1,38 @@
-# Ручной конвертер валют
+# CurrencyManual
 
-Android-приложение с ручным справочником курсов. Интернет не нужен для обычной работы и пересчётов. При добавлении валюты приложение один раз пытается скачать SVG-флаг и сохраняет его локально; если загрузка недоступна, остаётся emoji-флаг.
+**Version:** 1.0.1  
+**Android versionCode:** 2  
+**Archive:** `CurrencyManual-v1.0.1-source-for-git.zip`
 
-## Что реализовано
+Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
-- Основной экран разделён на три зоны: сумма и основная валюта сверху, прокручиваемый список результатов в центре, собственная цифровая клавиатура снизу.
-- Цифровая клавиатура всегда видна, занимает всю ширину и не перекрывает список валют.
-- Ввод суммы сразу доступен при запуске. Системная клавиатура не вызывается.
-- Кнопка `✕` в верхнем правом углу цифровой панели полностью очищает сумму. `⌫` удаляет последний символ.
-- При уходе приложения в фон сумма очищается. Основная валюта и курсы остаются сохранёнными.
-- При смене основной валюты само число в поле не меняется. Меняется только валюта суммы, после чего все результаты и отображаемые курсы пересчитываются.
-- Курсы редактируются вручную. Нет API курсов и автоматического обновления.
-- Можно хранить от 2 до 6 валют, выбирать их из встроенного каталога и искать по коду или названию.
-- Все данные справочника хранятся локально в SharedPreferences.
+## Version tracking
 
-## Модель курсов
+The version is defined in `app/build.gradle`, recorded in `VERSION.txt`, and displayed in Settings. Tap the version row to open the About dialog. Every source archive uses the same version in its filename. Increment `versionCode` for every published build and update `versionName`, `VERSION.txt`, and `CHANGELOG.md` together.
 
-Для согласованного пересчёта между любыми добавленными валютами используется внутренний нормализованный коэффициент каждой валюты. Это только математическое представление данных внутри приложения, а не отдельная валюта, не внешний источник и не API. Пользователь видит и редактирует курс каждой валюты относительно выбранной основной валюты. Когда основная валюта меняется, приложение вычисляет новые курсы из сохранённых коэффициентов. Введённая сумма при этом не изменяется.
+## Features
+- Dark saradmin interface and built-in numeric keypad. The clear key (✕) is part of the keypad and uses the same key styling as digits.
+- Session-only amount input. The amount is cleared when the app goes to background.
+- Two to six selected currencies; base currency can be changed without changing the entered numeric amount.
+- Currency factors are normalized internally to USD only as a calculation reference. USD is not forced as the user's base currency.
+- Automatic rate refresh at the configured interval (15 minutes by default; 30 minutes, 1, 6, 12 or 24 hours are available).
+- Provider 1: Frankfurter API (`api.frankfurter.dev`). Provider 2: ExchangeRate-API Open Access (`open.er-api.com`). Provider 1 takes precedence; provider 2 fills missing currencies and is used if provider 1 is unavailable.
+- All fetched rates are cached locally. If both services are unavailable, the last saved values remain available. Manually edited rates are not overwritten by automatic updates.
+- Source badges: ¹ Frankfurter, ² ExchangeRate-API, blue for manual or fallback data.
+- Add currencies from the local catalog. A cached API rate is used automatically when available; otherwise the app asks for a manual rate. Existing currency rates can be edited in Settings.
+- Remove additional currencies (at least two currencies must remain).
 
-При первом запуске добавлены USD, EUR, KZT и RUB с демонстрационными начальными значениями. Это не актуальные котировки. Их нужно проверить и при необходимости изменить в настройках перед использованием.
+## Build
+GitHub Actions runs:
 
-## Структура
+```bash
+gradle --no-daemon clean testDebugUnitTest assembleDebug
+```
 
-- `app/src/main/java/ru/saradmin/currency/MainActivity.java` — экран, цифровая клавиатура и диалоги.
-- `core/ConversionEngine.java` — точная арифметика на `BigDecimal`.
-- `data/CurrencyRepository.java` — локальное хранение и расчёт курсов.
-- `data/CurrencyCatalog.java` — встроенный каталог валют.
-- `model/CurrencyItem.java` — модель валюты.
-- `app/src/test/.../ConversionEngineTest.java` — unit-тесты арифметики.
-- `.github/workflows/build-apk.yml` — сборка APK в GitHub Actions.
+The debug APK is uploaded as the `CurrencyManual-debug-apk` workflow artifact.
 
-## Сборка в GitHub
+## Rate semantics
+Frankfurter uses central-bank reference data and its publication schedule. ExchangeRate-API Open Access updates daily. The app's refresh interval controls local polling, not the publication frequency of either provider. Rates are indicative and may differ from bank/card exchange rates.
 
-Workflow запускается при push в `main` или вручную через вкладку **Actions**. Он использует JDK 17, Gradle 8.9, Android SDK 35 и сначала выполняет unit-тесты, затем собирает debug APK.
-
-Готовый файл публикуется в разделе Artifacts конкретного запуска под именем `CurrencyManual-debug-apk`. Внутри будет `app-debug.apk`.
-
-## Ограничения первой версии
-
-- Каталог содержит распространённые валюты, а не полный официальный список ISO 4217.
-- Список валют ограничен шестью позициями.
-- Начальные курсы демонстрационные и должны быть вручную заменены.
-- SVG-флаги загружаются с репозитория `lipis/flag-icons`; при отсутствии интернета используется emoji.
-- Это debug APK для установки и проверки, не подписанный release APK для публикации в магазине.
+## Tests
+JUnit tests cover conversion arithmetic, cross rates, validation, provider priority, fallback merging and missing-rate handling. Network availability and live provider responses are not assumed by unit tests.
