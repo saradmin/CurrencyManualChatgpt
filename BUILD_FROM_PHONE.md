@@ -45,3 +45,13 @@ The workflow requires all four secrets before building a release APK.
 After a successful workflow run, download artifact `CurrencyConverter-v1.0.5-release-apk`. Install `app-release.apk`.
 
 The currently installed app was signed with a different key. To migrate to this permanent key, uninstall the old app once, then install this signed release. Future releases must use the same keystore and passwords or Android will reject in-place updates.
+
+## Repeatable build, download and install
+
+After committing and pushing the project to `main`, run this from Termux:
+
+```bash
+bash scripts/build-install.sh
+```
+
+The script reads the app version and artifact name from `VERSION.txt`, finds the GitHub Actions run for the exact current Git commit, waits until it finishes, and downloads the artifact only if the workflow succeeds. It then checks that `app-release.apk` exists and is a valid ZIP archive before opening the Android installer. It polls every five seconds without an arbitrary timeout; press Ctrl+C to stop waiting.

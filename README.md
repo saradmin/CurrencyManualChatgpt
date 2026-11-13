@@ -43,3 +43,7 @@ JUnit tests cover conversion arithmetic, cross rates, validation, provider prior
 ## Release signing (1.0.2+)
 
 Release APKs are signed with a persistent private keystore supplied through GitHub Actions Secrets. Follow `BUILD_FROM_PHONE.md` for the one-time setup. Do not commit the keystore or passwords. CI verifies the APK signature and package/version metadata before uploading the release artifact.
+
+## Build and install from Termux
+
+After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script detects the current commit, waits for its GitHub Actions run, checks the result, downloads the versioned artifact from `VERSION.txt`, validates the APK archive, and opens the Android installer.
