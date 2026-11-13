@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.2  
-**Source archive:** `CurrencyConverter-v1.1.2-source-for-git.zip`
+**Version:** 1.1.3  
+**Source archive:** `CurrencyConverter-v1.1.3-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -28,3 +28,7 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 ## Build from Android phone
 
 Use Termux and run `bash scripts/build-install.sh` from the project directory. The script stages and commits source changes, pushes to `main`, waits for the matching GitHub Actions workflow, verifies the signed APK and downloads it to `Download/CurrencyConverter`. Source ZIP archives, APKs, build outputs and local signing keys are excluded from Git.
+
+
+## Offline currency addition (1.1.3)
+Adding a catalog currency does not perform a network request and never reuses cached exchange-rate data. Every pair involving the new currency is initialized to `0.0000`, marked Manual (blue), and left unpinned. Zero rates cannot be pinned. A later successful API refresh can populate these pairs.

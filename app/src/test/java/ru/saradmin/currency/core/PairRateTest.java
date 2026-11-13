@@ -11,6 +11,11 @@ public class PairRateTest {
         assertEquals(0, PairRate.orient(rate, false).compareTo(new BigDecimal("1")));
     }
 
+    @Test public void zeroRateRemainsZeroInBothDirectionsAndIsNotInverted() {
+        assertEquals(0, PairRate.orient(BigDecimal.ZERO, true).compareTo(BigDecimal.ZERO));
+        assertEquals(0, PairRate.orient(BigDecimal.ZERO, false).compareTo(BigDecimal.ZERO));
+    }
+
     @Test public void reverseDirectionUsesReciprocal() {
         BigDecimal rate = new BigDecimal("53.45");
         assertEquals(0, PairRate.orient(rate, true).compareTo(rate));

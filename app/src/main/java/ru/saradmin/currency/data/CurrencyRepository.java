@@ -123,7 +123,8 @@ public final class CurrencyRepository {
         if(!factors.containsKey(c)||c.equals(baseCode))return;
         if (value) {
             String manualKey = matchingPairKey(baseCode, c);
-            if (manualKey == null || !pairSources.containsKey(manualKey) || pairSources.get(manualKey) != 0) return;
+            if (manualKey == null || !pairSources.containsKey(manualKey) || pairSources.get(manualKey) != 0
+                    || pairRates.get(manualKey) == null || pairRates.get(manualKey).signum() <= 0) return;
         } // Only an explicitly edited manual pair can be kept.
         String key=matchingPairKey(baseCode,c);
         if(key==null)key=pairKey(baseCode,c);
@@ -209,6 +210,25 @@ public final class CurrencyRepository {
     }
 
     public synchronized void setRateFromBase(String target,BigDecimal rate){if(!factors.containsKey(target)||target.equals(baseCode)||rate==null||rate.signum()<=0)throw new IllegalArgumentException();String key=pairKey(baseCode,target);String reverse=pairKey(target,baseCode);pairRates.remove(reverse);pairSources.remove(reverse);pairPinned.remove(reverse);pairRates.put(key,rate);pairSources.put(key,0);pairPinned.putIfAbsent(key,false);save();}
+    /** Adds a catalog currency without network access or reuse of cached USD factors.
+     * Every new pair starts at zero, Manual source, and unpinned so a later API refresh can fill it.
+     * The positive factor is only an internal placeholder; explicit zero pair quotes are authoritative.
+     */
+    public synchronized boolean addCurrencyOffline(String code) {
+        if (factors.size() >= MAX_CURRENCIES || factors.containsKey(code) || CurrencyCatalog.find(code) == null) return false;
+        List<String> existing = new ArrayList<>(factors.keySet());
+        factors.put(code, BigDecimal.ONE);
+        sources.put(code, 0);
+        pinned.put(code, false);
+        for (String other : existing) {
+            String key = pairKey(other, code);
+            pairRates.put(key, BigDecimal.ZERO);
+            pairSources.put(key, 0);
+            pairPinned.put(key, false);
+        }
+        save();
+        return true;
+    }
     public synchronized boolean addCurrency(String code,BigDecimal rate){if(rate==null||rate.signum()<=0)return false;return addCurrencyFactor(code,ru.saradmin.currency.core.ConversionEngine.factorFromRate(factors.get(baseCode),rate),0);}
     public synchronized boolean addCurrencyFactor(String code,BigDecimal factor,int source){if(factors.size()>=MAX_CURRENCIES||factors.containsKey(code)||CurrencyCatalog.find(code)==null||factor==null||factor.signum()<=0)return false;factors.put(code,factor);sources.put(code,source);pinned.put(code,false);save();return true;}
     public synchronized void removeCurrency(String code){if(factors.size()<=2||code.equals(baseCode))throw new IllegalArgumentException("Keep at least two currencies and choose another base first");factors.remove(code);sources.remove(code);pinned.remove(code);String prefix=code+">", suffix=">"+code;java.util.Iterator<String> it=pairRates.keySet().iterator();while(it.hasNext()){String key=it.next();if(key.startsWith(prefix)||key.endsWith(suffix)){it.remove();pairSources.remove(key);pairPinned.remove(key);}}save();}

@@ -1,3 +1,10 @@
+# Changelog
+
+## 1.1.3
+- Currency addition is fully offline and never reuses cached USD factors or labels cached values as fresh API rates.
+- Every pair involving a newly added currency starts at 0.0000 with Manual (blue) source and Keep disabled.
+- Zero-rate pairs cannot be pinned; later successful API refreshes can populate them.
+
 ## 1.1.2 launcher icon resource alignment
 - Aligned launcher icon resources across Android density buckets using the approved original CC Exchange artwork.
 - Both `android:icon` and `android:roundIcon` reference the same mipmap resource.

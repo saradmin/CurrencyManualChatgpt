@@ -10,8 +10,9 @@ public final class PairRate {
     private PairRate() { }
 
     public static BigDecimal orient(BigDecimal storedRate, boolean sameDirection) {
-        if (storedRate == null || storedRate.signum() <= 0)
-            throw new IllegalArgumentException("Pair rate must be greater than zero");
+        if (storedRate == null || storedRate.signum() < 0)
+            throw new IllegalArgumentException("Pair rate must not be negative");
+        if (storedRate.signum() == 0) return BigDecimal.ZERO;
         return sameDirection ? storedRate : BigDecimal.ONE.divide(storedRate, MC);
     }
 }

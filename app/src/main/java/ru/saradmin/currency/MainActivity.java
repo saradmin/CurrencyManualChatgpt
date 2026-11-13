@@ -622,25 +622,19 @@ public class MainActivity extends Activity {
         List<String> labels = new ArrayList<>(); for (CurrencyItem item : items) labels.add(item.flagEmoji + "   " + item.code + " · " + item.name); return labels;
     }
     private void askInitialRate(CurrencyItem item) {
-        BigDecimal apiFactor = repository.getCachedApiFactor(item.code);
-        if (apiFactor != null) {
-            if (repository.addCurrencyFactor(item.code, apiFactor, repository.getCachedApiSource(item.code))) { downloadFlagOnce(item); Toast.makeText(this,"Currency added using the latest API rate",Toast.LENGTH_SHORT).show(); if(settingsDialog!=null&&settingsDialog.isShowing()) { settingsTemporarilyHidden = true; settingsDialog.dismiss(); } showSettings(); }
-            return;
+        // Adding a currency is deliberately offline-first: never use cached factors
+        // or label an old value as a fresh API quote. All its pairs start at zero.
+        if (repository.addCurrencyOffline(item.code)) {
+            downloadFlagOnce(item);
+            Toast.makeText(this, "Currency added with zero rates. Update rates when online.", Toast.LENGTH_LONG).show();
+            if (settingsDialog != null && settingsDialog.isShowing()) {
+                settingsTemporarilyHidden = true;
+                settingsDialog.dismiss();
+            }
+            showSettings();
+        } else {
+            Toast.makeText(this, "Unable to add currency", Toast.LENGTH_LONG).show();
         }
-        EditText input = new EditText(this); input.setSingleLine(true); input.setTextSize(18);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED); input.setHint("e.g. 90.5");
-        new AlertDialog.Builder(this).setTitle(item.flagEmoji + "  " + item.code)
-                .setMessage("Enter manually: 1 " + repository.getBaseCode() + " = ? " + item.code)
-                .setView(input).setNegativeButton("Cancel", null) .setPositiveButton("Add", (d, w) -> {
-                    try {
-                        BigDecimal rate = new BigDecimal(input.getText().toString().trim().replace(',', '.'));
-                        if (!repository.addCurrency(item.code, rate)) throw new NumberFormatException();
-                        downloadFlagOnce(item);
-                        Toast.makeText(this, "Currency added", Toast.LENGTH_SHORT).show();
-                        if (settingsDialog != null && settingsDialog.isShowing()) { settingsTemporarilyHidden = true; settingsDialog.dismiss(); }
-                        showSettings();
-                    } catch (Exception e) { Toast.makeText(this, "Enter a valid rate greater than zero", Toast.LENGTH_LONG).show(); }
-                }).show();
     }
 
     /** Refreshes only non-fixed pairs into the active settings draft. Save is the only commit. */
