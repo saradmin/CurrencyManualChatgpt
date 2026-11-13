@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.6
+- Replaced emoji/superscript rate-source markers with compact green circular badges containing `1` (Frankfurter) or `2` (ExchangeRate-API).
+- Manual/fallback rates retain a blue badge without a number.
+- Added unit tests for source badge labels.
+
+
+## 1.0.5 (versionCode 6)
+- Removed the keypad title and reduced the keypad height.
+- Moved clear-all into the keypad as a regular key.
+- Removed the empty-result ellipsis placeholder.
+- Displayed amounts and rates with exactly two decimal places.
+- Added long-press drag-and-drop reordering of result currencies.
+- Persisted currency order in local preferences.
+
+
 ## 1.0.4 (versionCode 5)
 - Fixed Android resource linking: added the missing round launcher icon referenced by AndroidManifest.xml.
 - Kept the launcher icon artwork consistent between regular and round icon resources.

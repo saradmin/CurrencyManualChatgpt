@@ -35,5 +35,26 @@ public final class CurrencyRepository {
     public synchronized boolean addCurrency(String code,BigDecimal rate){if(rate==null||rate.signum()<=0)return false;return addCurrencyFactor(code,ru.saradmin.currency.core.ConversionEngine.factorFromRate(factors.get(baseCode),rate),0);}
     public synchronized boolean addCurrencyFactor(String code,BigDecimal factor,int source){if(factors.size()>=MAX_CURRENCIES||factors.containsKey(code)||CurrencyCatalog.find(code)==null||factor==null||factor.signum()<=0)return false;factors.put(code,factor);sources.put(code,source);save();return true;}
     public synchronized void removeCurrency(String code){if(factors.size()<=2||code.equals(baseCode))throw new IllegalArgumentException("Keep at least two currencies and choose another base first");factors.remove(code);sources.remove(code);save();}
+    /** Reorders the non-base currencies and persists their display order. */
+    public synchronized void reorderCurrencies(List<String> orderedCodes) {
+        if (orderedCodes == null || orderedCodes.size() != factors.size() - 1)
+            throw new IllegalArgumentException("Invalid currency order");
+        java.util.HashSet<String> unique = new java.util.HashSet<>(orderedCodes);
+        java.util.HashSet<String> expected = new java.util.HashSet<>(factors.keySet());
+        expected.remove(baseCode);
+        if (unique.size() != orderedCodes.size() || unique.contains(baseCode) || !expected.equals(unique))
+            throw new IllegalArgumentException("Invalid currency order");
+        LinkedHashMap<String,BigDecimal> reorderedFactors = new LinkedHashMap<>();
+        LinkedHashMap<String,Integer> reorderedSources = new LinkedHashMap<>();
+        reorderedFactors.put(baseCode, factors.get(baseCode));
+        reorderedSources.put(baseCode, sources.get(baseCode));
+        for (String code : orderedCodes) {
+            reorderedFactors.put(code, factors.get(code));
+            reorderedSources.put(code, sources.get(code));
+        }
+        factors.clear(); factors.putAll(reorderedFactors);
+        sources.clear(); sources.putAll(reorderedSources);
+        save();
+    }
     public synchronized int getMaxCurrencies(){return MAX_CURRENCIES;}
 }

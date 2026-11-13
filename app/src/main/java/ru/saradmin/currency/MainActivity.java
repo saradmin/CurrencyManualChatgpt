@@ -10,6 +10,9 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
+import android.view.DragEvent;
+import android.content.ClipData;
+import android.os.Build;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -124,7 +127,7 @@ public class MainActivity extends Activity {
         resultsContainer = column(); resultsScroll.addView(resultsContainer);
         LinearLayout.LayoutParams rsp = new LinearLayout.LayoutParams(-1, 0, 1); rsp.topMargin = dp(2); rsp.bottomMargin = dp(8); root.addView(resultsScroll, rsp);
 
-        root.addView(buildNumericKeyboard(), new LinearLayout.LayoutParams(-1, dp(194)));
+        root.addView(buildNumericKeyboard(), new LinearLayout.LayoutParams(-1, dp(162)));
         amountInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { refreshResults(); }
@@ -135,13 +138,27 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout buildNumericKeyboard() {
-        LinearLayout keyboard = column(); keyboard.setBackground(rounded(CARD, BORDER)); padding(keyboard, 5, 5, 5, 5);
-        LinearLayout top = row(); TextView keyTitle = label("Numeric keypad", 11, true); keyTitle.setTextColor(MUTED);
-        top.addView(keyTitle, new LinearLayout.LayoutParams(0, dp(30), 1));
-        Button clear = keyButton("✕"); LinearLayout.LayoutParams clearP = new LinearLayout.LayoutParams(dp(48), dp(30)); clearP.setMargins(dp(3), 0, dp(3), 0); top.addView(clear, clearP);
-        clear.setOnClickListener(v -> { amountInput.setText(""); amountInput.setSelection(0); amountInput.requestFocus(); }); keyboard.addView(top);
-        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {".", "0", "⌫"}};
-        for (String[] line : keys) { LinearLayout r = row(); for (String key : line) { Button b = keyButton(key); LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(34), 1); p.setMargins(dp(3), dp(2), dp(3), dp(2)); r.addView(b,p); b.setOnClickListener(v -> onKey(key)); } keyboard.addView(r, new LinearLayout.LayoutParams(-1, dp(38))); }
+        // Compact keypad: no title row. Clear-all is a regular key inside the keypad.
+        LinearLayout keyboard = column();
+        keyboard.setBackground(rounded(CARD, BORDER));
+        padding(keyboard, 5, 5, 5, 5);
+        String[][] keys = {
+                {"1", "2", "3"},
+                {"4", "5", "6"},
+                {"7", "8", "9"},
+                {".", "0", "⌫", "✕"}
+        };
+        for (String[] line : keys) {
+            LinearLayout r = row();
+            for (String key : line) {
+                Button b = keyButton(key);
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(34), 1);
+                p.setMargins(dp(3), dp(2), dp(3), dp(2));
+                r.addView(b, p);
+                b.setOnClickListener(v -> onKey(key));
+            }
+            keyboard.addView(r, new LinearLayout.LayoutParams(-1, dp(38)));
+        }
         return keyboard;
     }
 
@@ -155,7 +172,9 @@ public class MainActivity extends Activity {
     }
     private void onKey(String key) {
         String current = amountInput.getText().toString();
-        if ("⌫".equals(key)) {
+        if ("✕".equals(key)) {
+            current = "";
+        } else if ("⌫".equals(key)) {
             if (!current.isEmpty()) current = current.substring(0, current.length() - 1);
         } else if (".".equals(key) || ",".equals(key)) {
             if (current.contains(".") || current.contains(",")) return;
@@ -173,9 +192,7 @@ public class MainActivity extends Activity {
         try { return new BigDecimal(value); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
     }
     private String format(BigDecimal value) {
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
-        DecimalFormat f = new DecimalFormat("#,##0.####", symbols); f.setRoundingMode(RoundingMode.HALF_UP);
-        return f.format(value.stripTrailingZeros());
+        return CurrencyDisplayFormat.format(value);
     }
     private void refreshResults() {
         if (resultsContainer == null) return;
@@ -186,17 +203,70 @@ public class MainActivity extends Activity {
             if (item.code.equals(base)) continue;
             LinearLayout card = row(); card.setBackground(rounded(CARD, BORDER)); padding(card, 12, 10, 12, 10);
             View flag = flagView(item); card.addView(flag, new LinearLayout.LayoutParams(dp(38), dp(28)));
-            LinearLayout details = column(); TextView code = label(item.code + "   " + sourceMark(repository.getSource(item.code)), 16, true); details.addView(code);
+            LinearLayout details = column();
+            LinearLayout codeRow = row();
+            TextView code = label(item.code, 16, true); codeRow.addView(code);
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(20), dp(20));
+            badgeParams.leftMargin = dp(9);
+            codeRow.addView(sourceBadge(repository.getSource(item.code)), badgeParams);
+            details.addView(codeRow);
             BigDecimal rate = repository.getRate(item.code);
             TextView rateText = label("1 " + base + " = " + format(rate) + " " + item.code, 10, false); rateText.setTextColor(MUTED); details.addView(rateText);
             LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(0, -2, 1); dp.leftMargin = dp(10); card.addView(details, dp);
             BigDecimal result = ConversionEngine.convert(amount, repository.getFactor(base), repository.getFactor(item.code));
-            TextView value = label(amountInput.getText().length() == 0 ? "···" : format(result), 19, true); value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT); card.addView(value);
+            TextView value = label(amountInput.getText().length() == 0 ? "" : format(result), 19, true);
+            value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+            card.addView(value);
+            card.setContentDescription(item.code + ". Long press and drag to reorder.");
+            card.setOnLongClickListener(v -> {
+                ClipData data = ClipData.newPlainText("currency-code", item.code);
+                View.DragShadowBuilder shadow = new View.DragShadowBuilder(card);
+                if (Build.VERSION.SDK_INT >= 24) card.startDragAndDrop(data, shadow, item.code, 0);
+                else card.startDrag(data, shadow, item.code, 0);
+                return true;
+            });
+            card.setOnDragListener((target, event) -> {
+                if (event.getAction() == DragEvent.ACTION_DROP) {
+                    String draggedCode = event.getClipData() != null && event.getClipData().getItemCount() > 0
+                            ? event.getClipData().getItemAt(0).getText().toString() : null;
+                    if (draggedCode != null && !draggedCode.equals(item.code)) {
+                        List<String> order = new ArrayList<>();
+                        for (CurrencyItem currency : repository.getCurrencies())
+                            if (!currency.code.equals(repository.getBaseCode())) order.add(currency.code);
+                        int from = order.indexOf(draggedCode);
+                        int to = order.indexOf(item.code);
+                        if (from >= 0 && to >= 0) {
+                            order = ru.saradmin.currency.data.CurrencyOrder.move(order, from, to);
+                            repository.reorderCurrencies(order);
+                            refreshResults();
+                        }
+                    }
+                    return true;
+                }
+                return event.getAction() == DragEvent.ACTION_DRAG_STARTED
+                        || event.getAction() == DragEvent.ACTION_DRAG_ENTERED
+                        || event.getAction() == DragEvent.ACTION_DRAG_EXITED
+                        || event.getAction() == DragEvent.ACTION_DRAG_ENDED;
+            });
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2); cp.bottomMargin = dp(7); resultsContainer.addView(card, cp);
         }
     }
 
-    private String sourceMark(int source) { return source == 1 ? "🟢¹" : source == 2 ? "🟢²" : "🔵"; }
+    private TextView sourceBadge(int source) {
+        TextView badge = new TextView(this);
+        badge.setGravity(Gravity.CENTER);
+        badge.setTextSize(10);
+        badge.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        badge.setTextColor(Color.WHITE);
+        String text = RateSourceLabel.forSource(source);
+        badge.setText(text);
+        GradientDrawable shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.OVAL);
+        shape.setColor(source == 1 || source == 2 ? 0xff20b85a : 0xff2589e8);
+        badge.setBackground(shape);
+        badge.setContentDescription(source == 1 ? "Frankfurter rate" : source == 2 ? "ExchangeRate-API rate" : "Manual or cached rate");
+        return badge;
+    }
 
     private View flagView(CurrencyItem item) {
         File cached = new File(getFilesDir(), "flag-" + item.countryCode + ".svg");
@@ -229,8 +299,13 @@ public class MainActivity extends Activity {
         Button updateNow=smallButton("Update rates now",true); LinearLayout.LayoutParams unp=new LinearLayout.LayoutParams(-1,dp(42));unp.topMargin=dp(6);body.addView(updateNow,unp);updateNow.setOnClickListener(v->refreshRatesIfNeeded(true));
         for (CurrencyItem item : repository.getCurrencies()) {
             LinearLayout line = row(); padding(line, 0, 10, 0, 10); line.addView(label(item.flagEmoji, 23, false));
-            TextView name = label(item.code + (item.code.equals(repository.getBaseCode()) ? " · base" : "   " + sourceMark(repository.getSource(item.code))), 15, true);
+            TextView name = label(item.code + (item.code.equals(repository.getBaseCode()) ? " · base" : ""), 15, true);
             LinearLayout.LayoutParams nameP = new LinearLayout.LayoutParams(0, -2, 1); nameP.leftMargin = dp(9); line.addView(name, nameP);
+            if (!item.code.equals(repository.getBaseCode())) {
+                LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(dp(20), dp(20));
+                badgeParams.leftMargin = dp(5);
+                line.addView(sourceBadge(repository.getSource(item.code)), badgeParams);
+            }
             if (!item.code.equals(repository.getBaseCode())) {
                 TextView prefix = label("1 " + repository.getBaseCode() + " =", 12, false); line.addView(prefix);
                 EditText rate = new EditText(this); rate.setSingleLine(true); rate.setTextSize(15); rate.setEms(5);
