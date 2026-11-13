@@ -42,6 +42,6 @@ The workflow requires all four secrets before building a release APK.
 
 ## Download and install
 
-After a successful workflow run, download artifact `CurrencyConverter-v1.0.3-release-apk`. Install `app-release.apk`.
+After a successful workflow run, download artifact `CurrencyConverter-v1.0.4-release-apk`. Install `app-release.apk`.
 
 The currently installed app was signed with a different key. To migrate to this permanent key, uninstall the old app once, then install this signed release. Future releases must use the same keystore and passwords or Android will reject in-place updates.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 (versionCode 5)
+- Fixed Android resource linking: added the missing round launcher icon referenced by AndroidManifest.xml.
+- Kept the launcher icon artwork consistent between regular and round icon resources.
+
 ## 1.0.3 (versionCode 4)
 - Renamed the app to Currency Converter.
 - Translated the complete user interface and currency names into English.
