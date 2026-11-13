@@ -30,4 +30,4 @@ GitHub Actions runs unit tests and builds a signed release APK. The artifact nam
 
 ## Build and install from Termux
 
-After pushing a commit to `main`, run `bash scripts/build-install.sh` from the project root. The script waits for the GitHub Actions run matching the pushed commit, checks the result, downloads the artifact, verifies the APK archive, and renames it using the app name and version. Install manually through ES File Explorer on this Huawei device.
+From the project root, run `bash scripts/build-install.sh`. The script stages and commits all project changes, pushes `main`, waits for the GitHub Actions run matching that exact commit (retrying temporary GitHub API/network failures), checks the result, downloads the artifact, verifies the APK archive, and renames it using the app name and version. Install manually through ES File Explorer on this Huawei device.

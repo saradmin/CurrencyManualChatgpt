@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
     private boolean rateRefreshInProgress = false;
     private boolean settingsTemporarilyHidden = false;
     private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
+    private final java.util.LinkedHashMap<String, String> settingsOriginalRates = new java.util.LinkedHashMap<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -358,6 +359,7 @@ public class MainActivity extends Activity {
     private void showSettings() {
         settingsTemporarilyHidden = false;
         settingsRateInputs.clear();
+        settingsOriginalRates.clear();
         if (!settingsEditActive) {
             repository.beginEdit();
             settingsEditActive = true;
@@ -429,6 +431,7 @@ public class MainActivity extends Activity {
                 rate.setBackgroundTintList(android.content.res.ColorStateList.valueOf(MUTED));
                 rate.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
                 rate.setHint("Rate"); rate.setSelectAllOnFocus(true); rate.setText(CurrencyDisplayFormat.formatEditable(repository.getRate(item.code)));
+                settingsOriginalRates.put(item.code, normalizeRateText(rate.getText().toString()));
                 rateColumn.addView(rate, new LinearLayout.LayoutParams(-1, dp(34)));
                 CheckBox keepRate = new CheckBox(this);
                 keepRate.setText("Keep this rate");
@@ -524,12 +527,20 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    private String normalizeRateText(String text) {
+        return text == null ? "" : text.trim().replace("\u00a0", "").replace(" ", "").replace(',', '.');
+    }
+
     private boolean saveRate(String code, String text, boolean showError) {
-        String normalized = text.trim().replace(" ", "").replace(',', '.');
+        String normalized = normalizeRateText(text);
+        // The displayed rate is rounded for readability. Do not write it back unless
+        // the user actually edited this field, otherwise API precision/source is lost.
+        if (normalized.equals(settingsOriginalRates.get(code))) return true;
         try {
             BigDecimal rate = new BigDecimal(normalized);
             if (rate.signum() <= 0) throw new NumberFormatException();
             repository.setRateFromBase(code, rate);
+            settingsOriginalRates.put(code, normalized);
             return true;
         } catch (Exception e) {
             if (showError) Toast.makeText(this, "Rate must be a number greater than zero", Toast.LENGTH_SHORT).show();

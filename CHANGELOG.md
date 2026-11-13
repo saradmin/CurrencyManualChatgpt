@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.19
+- Corrected the release archive and version progression; this release supersedes the incorrectly packaged 1.0.18 source archive.
+- Kept the launcher icon as two diagonal C initials: blue upper-left and red lower-right.
+- Kept the rate-source preservation fix so unchanged rounded rate fields do not overwrite API precision or source metadata.
+- Hardened the single-command Termux release script: retries transient GitHub API failures, parses workflow status reliably, tracks the existing run for the pushed commit, and excludes the downloaded source ZIP from the Git commit.
+
+## 1.0.18
+- Restored the launcher icon concept with two diagonal C initials: blue upper-left and red lower-right.
+- Prevented unchanged rounded rate fields from overwriting original API precision and source metadata when settings are saved.
+
 ## 1.0.17
 - Fixed Update rates now inside the open settings dialog.
 - Shows an Updating rates state while requests are running and reports success or failure.
