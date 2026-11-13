@@ -1,4 +1,2 @@
 App name: Currency Converter
-Version: 1.0.16
-Package: ru.saradmin.currency
-Signing: persistent private keystore supplied through GitHub Actions Secrets
+Version: 1.0.17

@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private TextView statusHint;
     private boolean settingsEditActive = false;
+    private boolean rateRefreshInProgress = false;
     private boolean settingsTemporarilyHidden = false;
     private final java.util.LinkedHashMap<String, EditText> settingsRateInputs = new java.util.LinkedHashMap<>();
 
@@ -380,7 +381,33 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams intp = new LinearLayout.LayoutParams(-1, dp(42)); intp.topMargin = dp(10); body.addView(interval, intp);
         interval.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Update interval").setItems(new String[]{"15 minutes","30 minutes","1 hour","6 hours","12 hours","24 hours"},(d,w)->{long[] vals={15,30,60,360,720,1440};repository.setIntervalMinutes(vals[w]);interval.setText("Update interval: "+intervalLabel(vals[w]));}).show());
         Button updateNow = smallButton("Update rates now", true); LinearLayout.LayoutParams unp = new LinearLayout.LayoutParams(-1, dp(42)); unp.topMargin = dp(6); body.addView(updateNow, unp);
-        updateNow.setOnClickListener(v -> refreshRatesIfNeeded(true));
+        updateNow.setOnClickListener(v -> {
+            if (rateRefreshInProgress) return;
+            // Keep edits already entered in the open settings draft before refreshing.
+            if (!applySettingsRateInputs()) return;
+            rateRefreshInProgress = true;
+            updateNow.setEnabled(false);
+            updateNow.setText("Updating rates…");
+            network.execute(() -> {
+                RateProvider.Result result = new RateProvider().fetch();
+                runOnUiThread(() -> {
+                    rateRefreshInProgress = false;
+                    if (isFinishing() || isDestroyed()) return;
+                    if (result.anyApiSucceeded && !result.rates.isEmpty()) {
+                        repository.applyApiRates(result.rates);
+                        Toast.makeText(this, "Rates updated", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Rate update failed. Check your internet connection.", Toast.LENGTH_LONG).show();
+                    }
+                    // Rebuild the settings view so the new values and source badges are visible.
+                    if (settingsDialog != null && settingsDialog.isShowing()) {
+                        settingsTemporarilyHidden = true;
+                        settingsDialog.dismiss();
+                        showSettings();
+                    }
+                });
+            });
+        });
 
         for (CurrencyItem item : repository.getCurrencies()) {
             boolean isBase = item.code.equals(repository.getBaseCode());

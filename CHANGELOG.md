@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.17
+- Fixed Update rates now inside the open settings dialog.
+- Shows an Updating rates state while requests are running and reports success or failure.
+- Refreshes the settings view after the API response so updated values and source badges are immediately visible.
+- Keeps the current settings draft and respects pinned rates.
+
+
 ## 1.0.16
 - Simplified release versioning: VERSION.txt is now the single source of truth.
 - Android versionCode is derived automatically from the app version.
