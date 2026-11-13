@@ -108,3 +108,9 @@
 - Currency order continues to persist in the saved repository order.
 - Settings remain transactional: Save commits the current draft; Cancel restores the snapshot from when settings were opened.
 \n## 1.0.20\n- Keep freshly downloaded API rates when the settings dialog is cancelled; Cancel now rolls back only pending manual/settings edits.\n- Refine the launcher mark with bolder currency-inspired C letterforms and double currency cuts.\n
+## 1.0.22
+- Store manual exchange rates as currency-pair overrides instead of changing a currency's global USD-normalized factor.
+- Preserve a manual pair rate and its source badge when switching the base currency; the reverse direction uses the reciprocal rate.
+- Keep changes isolated to the edited pair, leaving all other currency-pair rates unchanged.
+- Track the Keep this rate setting per pair and clear an unpinned manual pair override when an API refresh supplies a fresh rate for either currency.
+- Add unit tests for reciprocal pair conversion and 1:1 rates in both directions.

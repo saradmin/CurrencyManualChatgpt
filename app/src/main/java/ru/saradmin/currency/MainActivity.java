@@ -230,7 +230,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(dp(76), -2);
             detailsParams.leftMargin = dp(8);
             card.addView(details, detailsParams);
-            BigDecimal result = ConversionEngine.convert(amount, repository.getFactor(base), repository.getFactor(item.code));
+            BigDecimal result = amount.multiply(repository.getRate(item.code), new java.math.MathContext(16, java.math.RoundingMode.HALF_UP));
             TextView value = label(amountInput.getText().length() == 0 ? "" : format(result), 19, true);
             value.setSingleLine(true);
             value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
