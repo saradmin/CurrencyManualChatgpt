@@ -1,3 +1,8 @@
+## 1.1.2 launcher icon resource alignment
+- Aligned launcher icon resources across Android density buckets using the approved original CC Exchange artwork.
+- Both `android:icon` and `android:roundIcon` reference the same mipmap resource.
+- Removed legacy drawable icon references so the APK and installed launcher use the same artwork.
+
 ## 1.1.1 display precision update
 - Main-screen exchange rates now show four decimal places.
 - Positive rates that would round to 0.0000 are displayed as 0.0001 so a non-zero rate is never shown as zero.

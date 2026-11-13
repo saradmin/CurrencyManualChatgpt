@@ -37,6 +37,7 @@ find "$PROJECT_ROOT" -maxdepth 1 -type f \
   \( -name 'CurrencyConverter-*.zip' -o -name 'CurrencyManual-*.zip' \) -delete
 # Remove the accidental nested extraction directory seen in the repository.
 [ ! -d "$PROJECT_ROOT/cc" ] || rm -rf "$PROJECT_ROOT/cc"
+[ ! -d "$PROJECT_ROOT/cc112" ] || rm -rf "$PROJECT_ROOT/cc112"
 # Stage all source changes, including deletions of previously committed ZIPs.
 git add -A
 if ! git diff --cached --quiet; then

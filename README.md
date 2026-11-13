@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.1  
-**Source archive:** `CurrencyConverter-v1.1.1-source-for-git.zip`
+**Version:** 1.1.2  
+**Source archive:** `CurrencyConverter-v1.1.2-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
