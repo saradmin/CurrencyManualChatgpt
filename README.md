@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.7  
-**Source archive:** `CurrencyConverter-v1.1.7-source-for-git.zip`
+**Version:** 1.1.8  
+**Source archive:** `CurrencyConverter-v1.1.8-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -30,8 +30,8 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 Use Termux and run `bash scripts/build-install.sh` from the project directory. The script stages and commits source changes, pushes to `main`, waits for the matching GitHub Actions workflow, verifies the signed APK and downloads it to `Download/CurrencyConverter`. Source ZIP archives, APKs, build outputs and local signing keys are excluded from Git.
 
 
-## Offline currency addition (1.1.3)
-Adding a catalog currency does not perform a network request and never reuses cached exchange-rate data. Every pair involving the new currency is initialized to `0.0000`, marked Manual (blue), and left unpinned. Zero rates cannot be pinned. A later successful API refresh can populate these pairs.
+## Currency addition (1.1.8)
+Adding a catalog currency is offline-first: every pair involving it is initialized to `0.0000`, marked Manual (blue), and left unpinned. The app then asynchronously requests fresh quotes for the new currency only. Frankfurter is queried once with the new currency as base; ExchangeRate-API supplies cross-rates only where direct quotes are unavailable. Successful quotes update only the new currency's draft pairs and are committed only by Save. If both providers are unavailable, zero Manual rates remain; no cached or guessed values are substituted. Cancel rolls back the addition and any fetched quotes. Zero rates cannot be pinned.
 
 
 ## Settings currency-add flow (1.1.6)
@@ -44,3 +44,5 @@ After an offline currency is added, the current settings dialog is allowed to fi
 - The settings screen is rebuilt from the dialog dismissal callback, without a fixed-delay reopen.
 - Save commits the removal and refreshes the main screen immediately; Cancel restores the original currency list.
 - Removal is local and does not require network access.
+
+

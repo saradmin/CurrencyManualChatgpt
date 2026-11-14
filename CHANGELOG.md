@@ -1,3 +1,8 @@
+## 1.1.8
+- Restored automatic API lookup when adding a currency: create zero/unpinned draft pairs, then fetch fresh quotes for the new currency only.
+- Query Frankfurter once and use ExchangeRate-API cross-rates only for missing targets.
+- Apply successful quotes only to the new currency's pairs; Save commits and Cancel rolls back. If APIs are unavailable, zero Manual rates remain.
+
 ## 1.1.7
 - Reopen settings after currency removal from the actual dialog dismissal callback instead of a fixed delay.
 - Keep removal inside the existing Save/Cancel draft transaction; Save refreshes the main screen, Cancel restores the original list.

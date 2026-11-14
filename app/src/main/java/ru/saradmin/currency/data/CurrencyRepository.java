@@ -195,6 +195,34 @@ public final class CurrencyRepository {
         staleFallback = false;
         if (editSnapshot == null) save();
     }
+    /** Apply API quotes for a newly added currency to its draft pairs only. */
+    public synchronized int applyNewCurrencyApiRatesToDraft(String code, Map<String,RateProvider.Rate> rates) {
+        if (editSnapshot == null || rates == null || !factors.containsKey(code)) return 0;
+        int applied = 0;
+        for (Map.Entry<String,RateProvider.Rate> entry : rates.entrySet()) {
+            String key = entry.getKey();
+            if (!key.startsWith(code + ">")) continue;
+            String[] parts = key.split(">", 2);
+            if (parts.length != 2 || !factors.containsKey(parts[1])) continue;
+            RateProvider.Rate rate = entry.getValue();
+            if (rate == null || rate.value == null || rate.value.signum() <= 0) continue;
+            String reverse = pairKey(parts[1], code);
+            String existing = pairRates.containsKey(key) ? key : (pairRates.containsKey(reverse) ? reverse : null);
+            if (existing != null && pairPinned.getOrDefault(existing, false)) continue;
+            if (existing != null) {
+                pairRates.remove(existing); pairSources.remove(existing); pairPinned.remove(existing);
+            }
+            pairRates.put(key, rate.value);
+            pairSources.put(key, rate.source);
+            pairPinned.put(key, false);
+            apiCache.put(key, rate.value);
+            apiSources.put(key, rate.source);
+            applied++;
+        }
+        if (applied > 0) { lastUpdate = System.currentTimeMillis(); staleFallback = false; }
+        return applied;
+    }
+
     /** Apply a single-pair response to the active settings draft only. */
     public synchronized void applyApiPairToDraft(String base, String target, RateProvider.Rate rate) {
         if (editSnapshot == null || rate == null || rate.value == null || rate.value.signum() <= 0) return;

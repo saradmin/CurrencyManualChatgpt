@@ -642,27 +642,57 @@ public class MainActivity extends Activity {
         List<String> labels = new ArrayList<>(); for (CurrencyItem item : items) labels.add(item.flagEmoji + "   " + item.code + " · " + item.name); return labels;
     }
     private void askInitialRate(CurrencyItem item) {
-        // Adding a currency is deliberately offline-first: never use cached factors
-        // or label an old value as a fresh API quote. All its pairs start at zero.
-        if (repository.addCurrencyOffline(item.code)) {
-            downloadFlagOnce(item);
-            Toast.makeText(this, "Currency added with zero rates. Update rates when online.", Toast.LENGTH_LONG).show();
-            if (settingsDialog != null && settingsDialog.isShowing()) {
-                // Rebuild the settings screen only after the previous AlertDialog has
-                // completed dismissal. Opening the replacement immediately can leave
-                // the old window owning focus and the new draft view out of sync.
-                AlertDialog previousDialog = settingsDialog;
-                settingsTemporarilyHidden = true;
-                previousDialog.setOnDismissListener(d -> {
-                    settingsDialog = null;
-                    showSettings();
-                });
-                previousDialog.dismiss();
-            } else {
-                showSettings();
-            }
-        } else {
+        // Create explicit zero/manual/unpinned pairs first. Network lookup is
+        // asynchronous and only targets pairs involving the newly added currency.
+        if (!repository.addCurrencyOffline(item.code)) {
             Toast.makeText(this, "Unable to add currency", Toast.LENGTH_LONG).show();
+            return;
+        }
+        downloadFlagOnce(item);
+        final List<String> existingCurrencies = new ArrayList<>(repository.getCurrencyCodes());
+        existingCurrencies.remove(item.code);
+        pendingPairRefreshes++;
+        if (settingsDialog != null && settingsDialog.isShowing()) {
+            settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+        }
+        network.execute(() -> {
+            RateProvider.Result result = new RateProvider().fetchForCurrency(item.code, existingCurrencies);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                pendingPairRefreshes = Math.max(0, pendingPairRefreshes - 1);
+                int applied = repository.applyNewCurrencyApiRatesToDraft(item.code, result.rates);
+                // If the replacement settings dialog is already visible, refresh
+                // only the new currency's field and source badge. If it has not
+                // been rebuilt yet, showSettings() will read the updated draft.
+                EditText rateField = settingsRateInputs.get(item.code);
+                if (applied > 0 && rateField != null && settingsDialog != null && settingsDialog.isShowing()) {
+                    BigDecimal value = repository.getRate(item.code);
+                    if (value != null && value.signum() > 0) {
+                        String formatted = CurrencyDisplayFormat.formatEditable(value);
+                        rateField.setText(formatted);
+                        settingsOriginalRates.put(item.code, normalizeRateText(formatted));
+                    }
+                    refreshSettingsSourceBadges();
+                }
+                if (settingsDialog != null && settingsDialog.isShowing() && pendingPairRefreshes == 0 && !rateRefreshInProgress)
+                    settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                if (applied > 0) {
+                    Toast.makeText(this, "Exchange rates loaded for " + item.code + ". Press Save to apply.", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "No API rates available for " + item.code + ". Zero rates are kept; you can update later.", Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+        if (settingsDialog != null && settingsDialog.isShowing()) {
+            AlertDialog previousDialog = settingsDialog;
+            settingsTemporarilyHidden = true;
+            previousDialog.setOnDismissListener(d -> {
+                settingsDialog = null;
+                showSettings();
+            });
+            previousDialog.dismiss();
+        } else {
+            showSettings();
         }
     }
 

@@ -41,6 +41,74 @@ public final class RateProvider {
         return null;
     }
 
+    /** Fetch all quotes from one newly added currency to the existing currencies.
+     * Frankfurter is requested once; ExchangeRate-API is queried once only for
+     * targets not covered by Frankfurter. No cached or synthetic USD factors are used.
+     */
+    public Map<String,Rate> fetchPairsForCurrency(String base, java.util.List<String> targets) {
+        Map<String,Rate> out = new LinkedHashMap<>();
+        if (base == null || targets == null || targets.isEmpty()) return out;
+        Map<String,BigDecimal> direct = null;
+        try { direct = parseFrankfurter(get("https://api.frankfurter.dev/v1/latest?base=" + base)); }
+        catch (Exception ignored) { }
+        Map<String,BigDecimal> usd = null;
+        boolean needsFallback = false;
+        for (String target : targets) {
+            if (target != null && !target.equals(base) && (direct == null || !direct.containsKey(target))) {
+                needsFallback = true; break;
+            }
+        }
+        if (needsFallback) {
+            try { usd = parseExchangeRate(get("https://open.er-api.com/v6/latest/USD")); }
+            catch (Exception ignored) { }
+        }
+        BigDecimal baseUsd = "USD".equals(base) ? BigDecimal.ONE : (usd == null ? null : usd.get(base));
+        for (String target : targets) {
+            if (target == null || target.equals(base)) continue;
+            BigDecimal value = direct == null ? null : direct.get(target);
+            int source = 1;
+            if (value == null && usd != null && baseUsd != null && baseUsd.signum() > 0) {
+                BigDecimal targetUsd = "USD".equals(target) ? BigDecimal.ONE : usd.get(target);
+                if (targetUsd != null && targetUsd.signum() > 0) {
+                    value = targetUsd.divide(baseUsd, new java.math.MathContext(16, java.math.RoundingMode.HALF_UP));
+                    source = 2;
+                }
+            }
+            if (value != null && value.signum() > 0) out.put(base + ">" + target, new Rate(value, source));
+        }
+        return out;
+    }
+
+    /** Fetches quotes for a newly added currency against the existing currency list.
+     * One Frankfurter request is made with the new currency as base, followed by
+     * at most one USD-based fallback request. Returned keys are NEW>OTHER only.
+     */
+    public Result fetchForCurrency(String newCurrency, java.util.List<String> existingCurrencies) {
+        Map<String,Rate> pairs = new LinkedHashMap<>();
+        Map<String,BigDecimal> direct = null;
+        Map<String,BigDecimal> usdFallback = null;
+        try { direct = parseFrankfurter(get("https://api.frankfurter.dev/v1/latest?base=" + newCurrency)); }
+        catch (Exception ignored) { }
+        try { usdFallback = parseExchangeRate(get("https://open.er-api.com/v6/latest/USD")); }
+        catch (Exception ignored) { }
+        for (String target : existingCurrencies) {
+            if (newCurrency.equals(target)) continue;
+            BigDecimal value = direct == null ? null : direct.get(target);
+            int source = 1;
+            if ((value == null || value.signum() <= 0) && usdFallback != null) {
+                BigDecimal newUsd = "USD".equals(newCurrency) ? BigDecimal.ONE : usdFallback.get(newCurrency);
+                BigDecimal targetUsd = "USD".equals(target) ? BigDecimal.ONE : usdFallback.get(target);
+                if (newUsd != null && targetUsd != null && newUsd.signum() > 0 && targetUsd.signum() > 0) {
+                    value = targetUsd.divide(newUsd, new java.math.MathContext(16, java.math.RoundingMode.HALF_UP));
+                    source = 2;
+                }
+            }
+            if (value != null && value.signum() > 0)
+                pairs.put(newCurrency + ">" + target, new Rate(value, source));
+        }
+        return new Result(pairs, !pairs.isEmpty());
+    }
+
     public Result fetch(java.util.List<String> currencies) {
         Map<String,Rate> pairs = new LinkedHashMap<>();
         boolean any = false;
