@@ -1,3 +1,6 @@
+## 1.1.10
+- Fixed the main-screen last-updated label after saving a successful rate refresh from Settings. The timestamp now reflects the committed draft; manual-only settings changes do not falsely mark rates as freshly updated.
+
 ## 1.1.9
 - Added a clickable © Saradmin copyright link at the bottom of Settings; it opens https://cc.saradmin.ru.
 

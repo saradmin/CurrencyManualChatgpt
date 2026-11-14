@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.9  
-**Source archive:** `CurrencyConverter-v1.1.9-source-for-git.zip`
+**Version:** 1.1.10  
+**Source archive:** `CurrencyConverter-v1.1.10-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -30,7 +30,7 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 Use Termux and run `bash scripts/build-install.sh` from the project directory. The script stages and commits source changes, pushes to `main`, waits for the matching GitHub Actions workflow, verifies the signed APK and downloads it to `Download/CurrencyConverter`. Source ZIP archives, APKs, build outputs and local signing keys are excluded from Git.
 
 
-## Settings footer (1.1.9)
+## Settings footer (1.1.10)
 - Added a clickable © Saradmin copyright link at the bottom of Settings, opening https://cc.saradmin.ru.
 
 ## Currency addition (1.1.8)

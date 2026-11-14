@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private TextView statusHint;
     private boolean settingsEditActive = false;
+    private long settingsInitialLastUpdate = 0L;
     private boolean rateRefreshInProgress = false;
     private int pendingPairRefreshes = 0;
     private boolean initialRefreshStarted = false;
@@ -376,6 +377,7 @@ public class MainActivity extends Activity {
         settingsSourceBadges.clear();
         if (!settingsEditActive) {
             repository.beginEdit();
+            settingsInitialLastUpdate = repository.getLastUpdate();
             settingsEditActive = true;
         }
         ScrollView scroll = new ScrollView(this);
@@ -559,9 +561,11 @@ public class MainActivity extends Activity {
             if (!applySettingsRateInputs()) return;
             applySettingsPinInputs();
             repository.commitEdit();
+            boolean ratesWereUpdated = repository.getLastUpdate() != settingsInitialLastUpdate;
             settingsEditActive = false;
             updateBaseLabel();
             refreshResults();
+            if (ratesWereUpdated) updateStatus(true);
             settingsDialog.dismiss();
         });
         });
