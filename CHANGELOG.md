@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.6
+- Fixed currency removal in settings: rebuild the settings dialog only after the previous dialog is fully dismissed, preserving the active draft.
+- Long-pressing the numeric keypad backspace key clears the entire amount; a short press still deletes one character.
+
+# Changelog
+
 ## 1.1.5
 - Fixed the add-currency settings refresh: wait for the old dialog dismissal before rebuilding settings.
 - Preserve the active settings transaction so the newly added currency appears in the refreshed list and is committed by the first Save; Cancel rolls it back.

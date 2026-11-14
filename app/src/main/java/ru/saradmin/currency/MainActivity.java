@@ -170,6 +170,14 @@ public class MainActivity extends Activity {
                 p.setMargins(dp(3), dp(2), dp(3), dp(2));
                 r.addView(b, p);
                 b.setOnClickListener(v -> onKey(key));
+                if ("⌫".equals(key)) {
+                    b.setOnLongClickListener(v -> {
+                        amountInput.setText("");
+                        amountInput.setSelection(0);
+                        amountInput.requestFocus();
+                        return true;
+                    });
+                }
             }
             keyboard.addView(r, new LinearLayout.LayoutParams(-1, dp(38)));
         }
@@ -491,7 +499,15 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams removeP = new LinearLayout.LayoutParams(dp(34), dp(34)); removeP.leftMargin = dp(5); line.addView(remove, removeP);
                 remove.setContentDescription("Remove " + item.code);
                 remove.setOnClickListener(v -> new AlertDialog.Builder(this).setMessage("Remove currency " + item.code + "?").setNegativeButton("Cancel", null).setPositiveButton("Remove", (d,w) -> {
-                    repository.removeCurrency(item.code); settingsTemporarilyHidden = true; settingsDialog.dismiss(); showSettings();
+                    repository.removeCurrency(item.code);
+                    settingsTemporarilyHidden = true;
+                    AlertDialog currentSettings = settingsDialog;
+                    currentSettings.dismiss();
+                    // Rebuild only after the previous settings dialog has completed dismissal.
+                    // Opening it synchronously here races with the old dialog's dismiss callbacks.
+                    currentSettings.getWindow().getDecorView().postDelayed(() -> {
+                        if (!isFinishing() && settingsEditActive) showSettings();
+                    }, 180);
                 }).show());
             }
             body.addView(line);

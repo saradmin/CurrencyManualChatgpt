@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.5  
-**Source archive:** `CurrencyConverter-v1.1.5-source-for-git.zip`
+**Version:** 1.1.6  
+**Source archive:** `CurrencyConverter-v1.1.6-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -34,5 +34,5 @@ Use Termux and run `bash scripts/build-install.sh` from the project directory. T
 Adding a catalog currency does not perform a network request and never reuses cached exchange-rate data. Every pair involving the new currency is initialized to `0.0000`, marked Manual (blue), and left unpinned. Zero rates cannot be pinned. A later successful API refresh can populate these pairs.
 
 
-## Settings currency-add flow (1.1.5)
+## Settings currency-add flow (1.1.6)
 After an offline currency is added, the current settings dialog is allowed to finish dismissing before the settings screen is rebuilt. The same active edit transaction is retained, so the new currency is visible in the refreshed settings list and is committed by the first Save. Cancel still rolls the addition back.
