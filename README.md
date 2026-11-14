@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.6  
-**Source archive:** `CurrencyConverter-v1.1.6-source-for-git.zip`
+**Version:** 1.1.7  
+**Source archive:** `CurrencyConverter-v1.1.7-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -36,3 +36,11 @@ Adding a catalog currency does not perform a network request and never reuses ca
 
 ## Settings currency-add flow (1.1.6)
 After an offline currency is added, the current settings dialog is allowed to finish dismissing before the settings screen is rebuilt. The same active edit transaction is retained, so the new currency is visible in the refreshed settings list and is committed by the first Save. Cancel still rolls the addition back.
+
+
+## Settings currency-removal flow (1.1.7)
+
+- Removing a currency changes only the active settings draft.
+- The settings screen is rebuilt from the dialog dismissal callback, without a fixed-delay reopen.
+- Save commits the removal and refreshes the main screen immediately; Cancel restores the original currency list.
+- Removal is local and does not require network access.

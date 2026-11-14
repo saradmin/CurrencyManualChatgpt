@@ -1,3 +1,8 @@
+## 1.1.7
+- Reopen settings after currency removal from the actual dialog dismissal callback instead of a fixed delay.
+- Keep removal inside the existing Save/Cancel draft transaction; Save refreshes the main screen, Cancel restores the original list.
+- Currency removal remains fully offline.
+
 # Changelog
 
 ## 1.1.6

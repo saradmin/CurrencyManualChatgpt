@@ -499,15 +499,19 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams removeP = new LinearLayout.LayoutParams(dp(34), dp(34)); removeP.leftMargin = dp(5); line.addView(remove, removeP);
                 remove.setContentDescription("Remove " + item.code);
                 remove.setOnClickListener(v -> new AlertDialog.Builder(this).setMessage("Remove currency " + item.code + "?").setNegativeButton("Cancel", null).setPositiveButton("Remove", (d,w) -> {
+                    // Removal is a draft operation while the settings transaction is active.
+                    // The repository's edit snapshot keeps it reversible until Save.
                     repository.removeCurrency(item.code);
                     settingsTemporarilyHidden = true;
                     AlertDialog currentSettings = settingsDialog;
-                    currentSettings.dismiss();
-                    // Rebuild only after the previous settings dialog has completed dismissal.
-                    // Opening it synchronously here races with the old dialog's dismiss callbacks.
-                    currentSettings.getWindow().getDecorView().postDelayed(() -> {
+                    // Reopen from the actual dismiss callback, not an arbitrary delay.
+                    // This avoids racing the old window and prevents stale settings UI.
+                    currentSettings.setOnDismissListener(dialog -> {
+                        settingsDialog = null;
+                        settingsTemporarilyHidden = false;
                         if (!isFinishing() && settingsEditActive) showSettings();
-                    }, 180);
+                    });
+                    currentSettings.dismiss();
                 }).show());
             }
             body.addView(line);
