@@ -628,10 +628,19 @@ public class MainActivity extends Activity {
             downloadFlagOnce(item);
             Toast.makeText(this, "Currency added with zero rates. Update rates when online.", Toast.LENGTH_LONG).show();
             if (settingsDialog != null && settingsDialog.isShowing()) {
+                // Rebuild the settings screen only after the previous AlertDialog has
+                // completed dismissal. Opening the replacement immediately can leave
+                // the old window owning focus and the new draft view out of sync.
+                AlertDialog previousDialog = settingsDialog;
                 settingsTemporarilyHidden = true;
-                settingsDialog.dismiss();
+                previousDialog.setOnDismissListener(d -> {
+                    settingsDialog = null;
+                    showSettings();
+                });
+                previousDialog.dismiss();
+            } else {
+                showSettings();
             }
-            showSettings();
         } else {
             Toast.makeText(this, "Unable to add currency", Toast.LENGTH_LONG).show();
         }

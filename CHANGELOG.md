@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5
+- Fixed the add-currency settings refresh: wait for the old dialog dismissal before rebuilding settings.
+- Preserve the active settings transaction so the newly added currency appears in the refreshed list and is committed by the first Save; Cancel rolls it back.
+
 ## 1.1.3
 - Currency addition is fully offline and never reuses cached USD factors or labels cached values as fresh API rates.
 - Every pair involving a newly added currency starts at 0.0000 with Manual (blue) source and Keep disabled.
