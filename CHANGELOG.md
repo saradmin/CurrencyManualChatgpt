@@ -1,3 +1,6 @@
+## 1.1.9
+- Added a clickable © Saradmin copyright link at the bottom of Settings; it opens https://cc.saradmin.ru.
+
 ## 1.1.8
 - Restored automatic API lookup when adding a currency: create zero/unpinned draft pairs, then fetch fresh quotes for the new currency only.
 - Query Frankfurter once and use ExchangeRate-API cross-rates only for missing targets.

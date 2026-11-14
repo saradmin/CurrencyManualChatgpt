@@ -527,6 +527,21 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams versionP = new LinearLayout.LayoutParams(-1, -2); versionP.topMargin = dp(18); body.addView(version, versionP);
         version.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("About").setMessage("Currency Converter\nVersion: " + getAppVersionName() + "\nPackage: " + getPackageName()).setPositiveButton("Close", null).show());
 
+        TextView copyright = label("© Saradmin", 12, true);
+        copyright.setTextColor(0xff2589e8);
+        copyright.setGravity(Gravity.CENTER);
+        copyright.setPadding(0, dp(5), 0, dp(2));
+        copyright.setClickable(true);
+        copyright.setOnClickListener(v -> {
+            try {
+                startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://cc.saradmin.ru")));
+            } catch (Exception e) {
+                Toast.makeText(this, "Unable to open website", Toast.LENGTH_SHORT).show();
+            }
+        });
+        body.addView(copyright, new LinearLayout.LayoutParams(-1, -2));
+
         settingsDialog = new AlertDialog.Builder(this).setView(scroll)
                 .setPositiveButton("Save", null)
                 .setNegativeButton("Cancel", (d,w) -> {

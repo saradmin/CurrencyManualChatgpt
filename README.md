@@ -1,8 +1,8 @@
 # Currency Converter
 
 **App name:** Currency Converter  
-**Version:** 1.1.8  
-**Source archive:** `CurrencyConverter-v1.1.8-source-for-git.zip`
+**Version:** 1.1.9  
+**Source archive:** `CurrencyConverter-v1.1.9-source-for-git.zip`
 
 Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
@@ -29,6 +29,9 @@ Android currency converter, Java 17, minSdk 23, compileSdk 35.
 
 Use Termux and run `bash scripts/build-install.sh` from the project directory. The script stages and commits source changes, pushes to `main`, waits for the matching GitHub Actions workflow, verifies the signed APK and downloads it to `Download/CurrencyConverter`. Source ZIP archives, APKs, build outputs and local signing keys are excluded from Git.
 
+
+## Settings footer (1.1.9)
+- Added a clickable © Saradmin copyright link at the bottom of Settings, opening https://cc.saradmin.ru.
 
 ## Currency addition (1.1.8)
 Adding a catalog currency is offline-first: every pair involving it is initialized to `0.0000`, marked Manual (blue), and left unpinned. The app then asynchronously requests fresh quotes for the new currency only. Frankfurter is queried once with the new currency as base; ExchangeRate-API supplies cross-rates only where direct quotes are unavailable. Successful quotes update only the new currency's draft pairs and are committed only by Save. If both providers are unavailable, zero Manual rates remain; no cached or guessed values are substituted. Cancel rolls back the addition and any fetched quotes. Zero rates cannot be pinned.
